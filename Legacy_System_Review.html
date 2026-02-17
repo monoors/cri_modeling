@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legacy CRI System — Review & Comparison</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: #f5f7fa;
+    color: #1a1a1a;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; color: #1F4E79; font-size: 1.6em; margin-bottom: 4px; }
+  h2 { color: #1F4E79; font-size: 1.25em; margin: 32px 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #D6E4F0; }
+  .subtitle { text-align: center; color: #666; font-size: 0.95em; margin-bottom: 24px; }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex; justify-content: center; gap: 0; margin-bottom: 28px;
+    background: white; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; margin-left: auto; margin-right: auto;
+  }
+  .tab-nav a {
+    flex: 1; text-align: center; padding: 14px 24px; text-decoration: none;
+    font-weight: 600; font-size: 0.9em; color: #666; transition: all 0.15s;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-nav a:hover { color: #1F4E79; background: #f0f4f8; }
+  .tab-nav a.active { color: #1F4E79; border-bottom-color: #1F4E79; background: #f0f4f8; }
+
+  .mermaid {
+    background: white; border-radius: 12px; padding: 30px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow-x: auto; margin-bottom: 16px;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    margin-bottom: 12px; padding: 12px; background: white; border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82em; }
+  .legend-swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid; }
+
+  .spec-section { margin-top: 16px; }
+  .spec-card {
+    background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid;
+  }
+  .spec-card h3 { font-size: 1.05em; margin-bottom: 10px; }
+  .spec-card .explanation { font-size: 0.9em; color: #333; margin-bottom: 14px; line-height: 1.65; }
+  .spec-card .explanation p { margin-bottom: 8px; }
+  .spec-card .explanation strong { color: #1F4E79; }
+
+  details {
+    margin-top: 8px; border-top: 1px solid #eee; padding-top: 10px;
+  }
+  details summary {
+    cursor: pointer; font-size: 0.85em; font-weight: 600; color: #666;
+    padding: 6px 0; user-select: none;
+  }
+  details summary:hover { color: #1F4E79; }
+  details[open] summary { color: #1F4E79; margin-bottom: 10px; }
+
+  .spec-card table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+  .spec-card th {
+    text-align: left; padding: 7px 8px; border-bottom: 2px solid #eee;
+    color: #555; font-weight: 700; background: #fafafa;
+  }
+  .spec-card td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; line-height: 1.45; }
+  .spec-card td code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 0.92em; }
+
+  .decision-box {
+    background: #F8F6FF; border: 1px solid #D6CCE8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .decision-box .label { font-weight: 700; color: #5B3F8F; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .tradeoff-box {
+    background: #FFF8F0; border: 1px solid #E8D4B8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .tradeoff-box .label { font-weight: 700; color: #996600; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .strength-box {
+    background: #F0FAF0; border: 1px solid #B8DDB8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .strength-box .label { font-weight: 700; color: #2D7D2D; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .weakness-box {
+    background: #FFF0F0; border: 1px solid #E8B8B8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .weakness-box .label { font-weight: 700; color: #A03030; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 0.78em; font-weight: 600; white-space: nowrap;
+  }
+  .tag-algo { background: #FFE0CC; color: #CC6600; }
+  .tag-dist { background: #F0E8F4; color: #7B4FB5; }
+  .tag-bayes { background: #E8D8F4; color: #5B3F8F; }
+  .tag-data { background: #D6E4F0; color: #1F4E79; }
+  .tag-legacy { background: #E8E8E8; color: #555; }
+  .tag-new { background: #FFE0CC; color: #CC6600; }
+  .tag-kept { background: #E0F0E0; color: #2D7D2D; }
+  .tag-replaced { background: #FFE8E8; color: #A03030; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  .comparison-table td:nth-child(2) { background: #FAFAFA; }
+  .comparison-table td:nth-child(3) { background: #F8FAFF; }
+</style>
+</head>
+<body>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+    <a href="Calculation_Pipeline.html">New Framework</a>
+    <a href="Legacy_System_Review.html" class="active">Legacy CRI Review</a>
+</div>
+
+<h1>Legacy CRI System — Review & Comparison</h1>
+<p class="subtitle">Analysis of the existing Cyber Resilience Index (CRI) implementation — strengths, weaknesses, and what carries forward</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- OVERVIEW                                                       -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>System Overview</h2>
+
+<div class="spec-card" style="border-color:#555">
+    <h3>What the Legacy CRI System Does</h3>
+    <div class="explanation">
+        <p>The legacy system computes a <strong>Cyber Resilience Index (CRI)</strong> — a single scalar score that represents how resilient the organization is against defined attack scenarios. It works primarily from <strong>TTP assessment data</strong>: for each MITRE ATT&CK technique, analysts record an initial and final mitigation level (qualitative: M1–M4), which gets mapped to a numerical effectiveness value.</p>
+        <p>The system then runs through a pipeline: load TTP assessments → map mitigation levels to numbers → build a timeline of assessments → apply time-based degradation → compute per-stage success probabilities using dynamic programming → aggregate across scenarios into a single CRI score. A separate contribution analysis module (CriContribution) performs perturbation-based attribution to explain <em>what drove CRI changes</em> between periods.</p>
+        <p>The CRI itself is computed as: <code>CRI = (maximum_allowed_impact / total_expected_impact) × 1000</code>. Higher CRI means better resilience. The expected impact is scenario-weighted, scaled by annual threat exposures and a target-years-between-compromise parameter.</p>
+    </div>
+    <details>
+        <summary>Technical Detail — Architecture & Data Flow</summary>
+        <table>
+            <tr><th>Component</th><th>Implementation</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Core Engine</b></td>
+                <td><code>CriDataProcessor</code> class in <code>model.py</code></td>
+                <td>Handles data loading, preprocessing, Bayesian priors, stage probability calculation, and CRI computation. ~1200 lines.</td>
+            </tr>
+            <tr>
+                <td><b>Contribution Analysis</b></td>
+                <td><code>CriContribution</code> class in <code>analysis.py</code></td>
+                <td>Perturbation-based attribution. Computes CRI with/without each change to isolate impact. ~560 lines.</td>
+            </tr>
+            <tr>
+                <td><b>Data Sources</b></td>
+                <td>TTP CSV + technique weights Excel + technique sizes Excel</td>
+                <td>Single input source type: TTP assessments. No pentest, incident, or operational finding integration.</td>
+            </tr>
+            <tr>
+                <td><b>Configuration</b></td>
+                <td>YAML config file</td>
+                <td>Contains: attack scenarios, mitigation level mappings, tactic priors, technique ID remappings, threat landscape parameters.</td>
+            </tr>
+            <tr>
+                <td><b>Output</b></td>
+                <td>CRI scalar + per-scenario breakdown + contribution attribution</td>
+                <td>No Monte Carlo distributions. Single point estimate per scenario.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- PIPELINE FLOW                                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Legacy Pipeline Flow</h2>
+
+<div class="mermaid">
+flowchart LR
+
+    subgraph SRC["Data Sources"]
+        direction TB
+        TTP_CSV["<b>TTP Assessment CSV</b><br/>technique, mitigation level<br/>initial + final dates"]
+        WEIGHTS["<b>Technique Weights</b><br/>importance per stage<br/>(Excel)"]
+        SIZES["<b>Technique Sizes</b><br/>procedure count<br/>per technique (Excel)"]
+        CONFIG["<b>YAML Config</b><br/>scenarios, priors<br/>degradation params"]
+    end
+
+    subgraph PREP["Preprocessing"]
+        direction TB
+        LOAD["<b>Load & Clean</b><br/>explode lists<br/>filter N/A"]
+        MAP["<b>Map Mlevels</b><br/>M1→0.9, M2→0.7<br/>M3→0.5, M4→0.3"]
+        TIMELINE["<b>Build Timeline</b><br/>initial + final<br/>chronological order"]
+        IMPROVE["<b>Compute Improvements</b><br/>diff between<br/>consecutive assessments"]
+    end
+
+    subgraph SNAP["Snapshot & Degradation"]
+        direction TB
+        SNAPSHOT["<b>Get Last Assessment</b><br/>most recent per TTP<br/>up to snapshot date"]
+        DEGRADE["<b>Apply Degradation</b><br/>linear decay of<br/>improvements + weights"]
+    end
+
+    subgraph BAYES_L["Bayesian Baseline"]
+        direction TB
+        PRIOR_L["<b>Tactic Priors</b><br/>per-tactic baseline<br/>from config"]
+        POSTERIOR_L["<b>Beta Posterior</b><br/>α = prior × strength<br/>β = (1-prior) × strength<br/>+ observed pass/fail"]
+        UNOBS["<b>Merge Unobserved</b><br/>virtual TTPs for<br/>untested techniques"]
+    end
+
+    subgraph ENGINE_L["CRI Calculation"]
+        direction TB
+        STAGE_P["<b>Stage Success Prob</b><br/>dynamic programming<br/>weighted technique combo"]
+        CHAIN["<b>Chain Stages</b><br/>dependent probability<br/>∏ stage probabilities"]
+        IMPACT["<b>Expected Impact</b><br/>stage impact ×<br/>dependent prob"]
+        CRI_CALC["<b>CRI Score</b><br/>allowed_impact /<br/>expected_impact × 1000"]
+    end
+
+    subgraph ATTRIB["Attribution"]
+        direction TB
+        DIFF["<b>Period Diff</b><br/>categorize changes:<br/>new / updated / other"]
+        PERTURB["<b>Perturbation</b><br/>CRI(base + Δ) − CRI(base)<br/>per TTP change"]
+        SCALE["<b>Scale & Normalize</b><br/>contributions sum<br/>to overall CRI change"]
+    end
+
+    TTP_CSV --> LOAD
+    CONFIG --> LOAD
+    LOAD --> MAP
+    MAP --> TIMELINE
+    WEIGHTS --> TIMELINE
+    TIMELINE --> IMPROVE
+    IMPROVE --> SNAPSHOT
+    SNAPSHOT --> DEGRADE
+    CONFIG --> DEGRADE
+
+    DEGRADE --> PRIOR_L
+    SIZES --> PRIOR_L
+    PRIOR_L --> POSTERIOR_L
+    POSTERIOR_L --> UNOBS
+    UNOBS --> STAGE_P
+    STAGE_P --> CHAIN
+    CHAIN --> IMPACT
+    IMPACT --> CRI_CALC
+
+    DEGRADE --> DIFF
+    DIFF --> PERTURB
+    PERTURB --> SCALE
+
+    classDef src fill:#E8F4E8,stroke:#2D7D2D,stroke-width:2px,color:#1a1a1a
+    classDef prep fill:#FDE8D0,stroke:#C67A2E,stroke-width:2px,color:#1a1a1a
+    classDef snap fill:#F0E8F4,stroke:#7B4FB5,stroke-width:2px,color:#1a1a1a
+    classDef bayes fill:#E8ECF4,stroke:#4A6FA5,stroke-width:2px,color:#1a1a1a
+    classDef eng fill:#FFE0CC,stroke:#CC6600,stroke-width:2px,color:#1a1a1a
+    classDef attrib fill:#DCECF4,stroke:#1F4E79,stroke-width:2px,color:#1a1a1a
+
+    class TTP_CSV,WEIGHTS,SIZES,CONFIG src
+    class LOAD,MAP,TIMELINE,IMPROVE prep
+    class SNAPSHOT,DEGRADE snap
+    class PRIOR_L,POSTERIOR_L,UNOBS bayes
+    class STAGE_P,CHAIN,IMPACT,CRI_CALC eng
+    class DIFF,PERTURB,SCALE attrib
+
+    style SRC fill:#F0F8F0,stroke:#2D7D2D,stroke-width:2px
+    style PREP fill:#FFF4E8,stroke:#C67A2E,stroke-width:2px
+    style SNAP fill:#F8F0FC,stroke:#7B4FB5,stroke-width:2px
+    style BAYES_L fill:#EEF0F8,stroke:#4A6FA5,stroke-width:2px
+    style ENGINE_L fill:#FFF0E0,stroke:#CC6600,stroke-width:2px
+    style ATTRIB fill:#E8F0F8,stroke:#1F4E79,stroke-width:2px
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#E8F4E8;border-color:#2D7D2D"></div> Data Sources</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FDE8D0;border-color:#C67A2E"></div> Preprocessing</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#F0E8F4;border-color:#7B4FB5"></div> Snapshot & Degradation</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#EEF0F8;border-color:#4A6FA5"></div> Bayesian Baseline</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FFE0CC;border-color:#CC6600"></div> CRI Engine</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#DCECF4;border-color:#1F4E79"></div> Attribution</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DETAILED SPECS                                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Detailed Pipeline Specifications</h2>
+
+<!-- ── DATA SOURCES ── -->
+<div class="spec-card" style="border-color:#2D7D2D">
+    <h3>Data Sources — Single Input Type</h3>
+    <div class="explanation">
+        <p>The legacy system has a <strong>single primary input</strong>: TTP assessment data in CSV format. Analysts evaluate MITRE ATT&CK techniques against the environment and record initial and final mitigation levels (M1–M4) with assessment dates. Two supporting Excel files provide technique importance weights (across attack stages) and technique sizes (procedure counts from the threat landscape).</p>
+        <p>Configuration comes from a YAML file that defines attack scenarios (with stages, impact values, and TTPs-per-stage limits), mitigation level mappings, tactic-level Bayesian priors, technique ID remappings, and threat landscape parameters (degradation rate, weight reduction, threat exposure counts).</p>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            Only TTP assessments feed the model. Pentests, red team exercises, real incidents, operational findings, and vulnerability scans are not integrated. This means the system's view of control effectiveness is based entirely on analyst assessments of whether controls <em>should</em> work against techniques — not on operational evidence of whether they <em>actually</em> worked.
+        </div>
+        <div class="strength-box">
+            <div class="label">Strength</div>
+            The system has a well-structured technique weighting approach: importance weights are derived per attack stage from threat landscape data, and the maximum across stages is used. This captures the idea that a technique's importance is defined by its most critical role in any attack phase.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — Input Schemas</summary>
+        <table>
+            <tr><th>Source</th><th>Format</th><th>Key Fields</th><th>Notes</th></tr>
+            <tr>
+                <td><b>TTP CSV</b></td>
+                <td>CSV</td>
+                <td><code>Technique ID</code>, <code>Threat</code>, <code>Tactics</code>, <code>Scenario</code>, <code>Initial mitigation level</code>, <code>Final mitigation level</code>, <code>Date of first/final assessment</code>, <code>Procedure description</code></td>
+                <td>List columns (Threat, Tactics, Scenario) are exploded into separate rows. Mitigation levels are qualitative strings (M1–M4).</td>
+            </tr>
+            <tr>
+                <td><b>Technique Weights</b></td>
+                <td>Excel</td>
+                <td><code>Technique</code> (ID + name), stage columns (Initial Access, Lateral Movement, etc.)</td>
+                <td>Weight = max across all stages. Default weight from config for unmapped techniques.</td>
+            </tr>
+            <tr>
+                <td><b>Technique Sizes</b></td>
+                <td>Excel</td>
+                <td><code>ID</code> (technique), <code>tactics</code>, <code>max_count_num</code> (procedure count), <code>technique_name</code></td>
+                <td>Used for Bayesian prior strength calculation. Missing techniques default to size 50.</td>
+            </tr>
+            <tr>
+                <td><b>YAML Config</b></td>
+                <td>YAML</td>
+                <td><code>ATTACK_SCENARIOS</code>, <code>MLEVELS</code>, <code>TACTIC_PRIORS</code>, <code>TECHNIQUE_MAPPING</code>, <code>THREAT_LANDSCAPE_DATA</code></td>
+                <td>Contains scenario definitions (stages, impacts, TTPs-per-stage), degradation params, and all tuning knobs.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── PREPROCESSING ── -->
+<div class="spec-card" style="border-color:#C67A2E">
+    <h3>Preprocessing — Mitigation Level Mapping & Timeline</h3>
+    <div class="explanation">
+        <p>The preprocessing pipeline converts qualitative mitigation assessments into numbers. Mitigation levels M1–M4 are mapped to fixed effectiveness values (e.g., M1 → 0.9, M2 → 0.7, M3 → 0.5, M4 → 0.3). These are static mappings from config — there's no uncertainty or distribution around them.</p>
+        <p>The system then builds a <strong>chronological timeline</strong> by unpacking initial and final assessments into separate rows. This timeline enables temporal analysis: tracking how each TTP's mitigation effectiveness changes over time. An improvement metric is computed as the diff between consecutive assessments per TTP.</p>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            The mitigation level mapping is a fixed lookup table (M1 = 0.9, etc.) with no uncertainty. A control rated M2 gets exactly 0.7 effectiveness — there's no distribution, no confidence interval, no mechanism for the same M2 rating to mean different things in different contexts. In the new framework, effectiveness is a full Beta distribution that updates with evidence.
+        </div>
+        <div class="strength-box">
+            <div class="label">Strength</div>
+            The timeline structure and improvement tracking is well-designed. Creating a chronological sequence of assessments per TTP and computing deltas between them is a clean way to track security posture evolution. The new framework's observation log (A2) serves a similar purpose but is more granular.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — Mapping & Timeline Logic</summary>
+        <table>
+            <tr><th>Step</th><th>Logic</th><th>Output</th></tr>
+            <tr>
+                <td><b>Mitigation mapping</b></td>
+                <td>First 2 chars of level string → lookup in MLEVELS config → scalar value</td>
+                <td><code>initial_mean_</code>, <code>final_mean_</code> columns added</td>
+            </tr>
+            <tr>
+                <td><b>Timeline creation</b></td>
+                <td>Stack initial assessments (Date of first, initial_mean_) and final assessments (Date of final, final_mean_) into single chronological table</td>
+                <td><code>df_timeline</code> with Date, mean_, ID, context columns</td>
+            </tr>
+            <tr>
+                <td><b>Improvement calc</b></td>
+                <td><code>groupby(ID).diff()</code> on mean_ column. First assessment gets 0.</td>
+                <td><code>mean_improvement</code> column: positive = security gain, negative = regression</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── SNAPSHOT & DEGRADATION ── -->
+<div class="spec-card" style="border-color:#7B4FB5">
+    <h3>Snapshot & Degradation — Temporal Decay</h3>
+    <div class="explanation">
+        <p>For any given analysis date, the system takes a <strong>snapshot</strong>: the most recent assessment for each TTP up to that date. Then it applies two types of linear degradation based on how long ago the assessment was:</p>
+        <p><strong>Mitigation degradation</strong> reduces the effectiveness of security improvements over time. If a control improved from 0.5 to 0.9, that 0.4 improvement decays linearly. The idea is that without active maintenance, security gains erode. <strong>Weight reduction</strong> decreases technique importance over time, reflecting that threat landscape relevance changes.</p>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            Linear degradation is crude. It creates situations where a 2-year-old assessment could degrade past its original baseline — the code even has a TODO comment: "Change the degradation to revert back to baseline prior instead of initial assessment. Reconsider linear decay." The new framework uses exponential decay with a configurable half-life, which is smoother and naturally bounded.
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            Degradation only applies to the improvement delta, not to the absolute effectiveness. If a control was always rated M2 (0.7) with no improvement, it never degrades at all — even if that assessment is 3 years old. Staleness of evidence should reduce confidence regardless of whether there was an improvement.
+        </div>
+        <div class="strength-box">
+            <div class="label">Strength</div>
+            The concept of temporal decay is sound — old evidence should count less than fresh evidence. The new framework preserves this principle via exponential age decay in the weight formula, but applies it more broadly (to all observations, not just improvements).
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — Degradation Formulas</summary>
+        <table>
+            <tr><th>Type</th><th>Formula</th><th>Parameters</th></tr>
+            <tr>
+                <td><b>Mitigation degradation</b></td>
+                <td><code>adjusted_mean = original_mean - (degradation/365) × days_since × improvement</code></td>
+                <td><code>degradation</code>: annual rate from config (0–1). Only applies to positive improvements.</td>
+            </tr>
+            <tr>
+                <td><b>Weight reduction</b></td>
+                <td><code>adjusted_weight = weight × (1 - (weight_reduction/365) × days_since)</code></td>
+                <td><code>weight_reduction</code>: annual rate from config (0–1). Can drive weight negative if days_since is large enough — no floor.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── BAYESIAN BASELINE ── -->
+<div class="spec-card" style="border-color:#4A6FA5">
+    <h3>Bayesian Baseline — Prior & Posterior Estimation</h3>
+    <div class="explanation">
+        <p>This is the most interesting part of the legacy system. For techniques that haven't been directly assessed, the system generates <strong>Bayesian estimates</strong> using Beta distributions. Each tactic (Initial Access, Lateral Movement, etc.) has a prior probability from config. The strength of the prior scales with technique size — techniques with more known procedures get a stronger prior (more data needed to move the estimate).</p>
+        <p>Observed assessments update the prior: pass observations add to α, fail observations add to β. The posterior mean (<code>α / (α + β)</code>) becomes the estimated effectiveness. This is then merged with the actual assessment data so that unobserved techniques get virtual TTP entries with their Bayesian estimates.</p>
+        <div class="strength-box">
+            <div class="label">Strength — Carried Forward</div>
+            The Bayesian Beta approach is fundamentally sound and is the foundation of the new framework. Using Beta(α, β) distributions to model effectiveness, with priors based on domain knowledge and posteriors updated by evidence, is exactly the right mathematical framework. The new system refines how this is done (per control × asset class, with weighted pseudo-counts), but the core idea originated here.
+        </div>
+        <div class="strength-box">
+            <div class="label">Strength — Carried Forward</div>
+            The concept of technique entropy (procedure count) affecting observation weight is preserved in the new system. Here it controls prior strength; in the new framework it directly weights each TTP assessment observation (1/procedure_count). Same insight, different mechanism.
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            The prior strength formula uses a fixed residual percentage (<code>r = 5%</code>) and computes strength as <code>(r / (1-r)) × technique_size</code>. This means a technique with 100 procedures gets strength ~5.3, while one with 3 procedures gets strength ~0.5 (clamped to min 0.5). The coupling of prior strength to technique size is clever but conflates two things: how confident we are in the prior (which should be about domain knowledge quality) and how many procedures exist (which is about coverage breadth).
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            Priors are per-tactic, not per-control. "Initial Access" gets one prior probability for all techniques in that tactic. The new framework has per-(control, asset class) priors derived from the control's base effectiveness rating, which is much more granular.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — Beta Distribution Setup</summary>
+        <table>
+            <tr><th>Step</th><th>Formula</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Strength calc</b></td>
+                <td><code>strength = max((r/(1-r)) × technique_size, min_strength)</code><br/>where <code>r = 0.05</code>, <code>min_strength = 0.5</code></td>
+                <td>Technique size from reference data. Larger techniques → stronger prior → harder to move with observations.</td>
+            </tr>
+            <tr>
+                <td><b>Prior</b></td>
+                <td><code>α₀ = prior × strength</code><br/><code>β₀ = (1 - prior) × strength</code></td>
+                <td><code>prior</code> from TACTIC_PRIORS config. Typically 0.5–0.9 per tactic.</td>
+            </tr>
+            <tr>
+                <td><b>Posterior update</b></td>
+                <td><code>α += Σ mean_</code> (sum of observed effectiveness)<br/><code>β += Σ (1 - mean_)</code></td>
+                <td>Updates are per (Technique ID, Tactics) group. Observed effectiveness values are treated as pseudo-counts.</td>
+            </tr>
+            <tr>
+                <td><b>Virtual TTPs</b></td>
+                <td><code>unobserved_count = technique_size - observed</code><br/>One virtual TTP per technique with posterior mean as effectiveness</td>
+                <td>Weight distributed: <code>weight_per_ttp = technique_weight / (observed + unobserved)</code>. Virtual TTPs consolidated into single weighted entry for efficiency.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── CRI CALCULATION ── -->
+<div class="spec-card" style="border-color:#CC6600">
+    <h3>CRI Calculation — Stage Probabilities & Impact</h3>
+    <div class="explanation">
+        <p>The engine computes a <strong>stage success probability</strong> for each tactic (attack stage) using dynamic programming. For each stage, it considers all techniques mapped to that tactic, their weights, and their mitigation effectiveness. The DP algorithm efficiently computes the probability that an attacker succeeds at the stage given a configurable limit on how many techniques they can attempt (<code>ttps_per_stage</code>).</p>
+        <p>Stages are then chained in sequence — each subsequent stage's probability is multiplied by the cumulative probability of reaching it. The expected impact per stage is the stage impact value × dependent probability. Total expected impact across all stages and scenarios is aggregated with scenario weights, and the final CRI is computed as a ratio of allowed-to-expected impact.</p>
+        <div class="strength-box">
+            <div class="label">Strength</div>
+            The dynamic programming approach for combining technique probabilities within a stage is elegant. It handles the combinatorial problem of "attacker picks the best k out of n techniques" efficiently. The new framework's gate resolver with AND/OR/SINGLE logic and correlation classes is more expressive, but the DP approach handles the pure-probability case well.
+        </div>
+        <div class="strength-box">
+            <div class="label">Strength</div>
+            Scenario weighting and the dependent stage chain (each stage conditional on reaching it) are correct modelling choices. The new framework preserves both concepts.
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            The output is a single point estimate — one CRI number. There's no Monte Carlo simulation, no confidence intervals, no loss exceedance curves. You know your CRI is 850 but you don't know if that means "probably fine" or "could be anywhere from 400 to 1200." The new framework produces full ALE distributions with percentiles (P50, P90, P95, P99).
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            The CRI score itself (<code>allowed_impact / expected_impact × 1000</code>) is an index, not a monetary risk estimate. It's useful for tracking trends but doesn't answer "how many euros are at risk." The new framework outputs annualized loss expectancy in euros.
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            No coverage or exposure modelling. A control either exists (assessed) or doesn't. There's no mechanism to say "this control is 95% deployed on cloud but only 40% on legacy." The new framework's A4b matrix with per-(control, asset class) coverage and exposure penalty addresses this directly.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — DP Algorithm & CRI Formula</summary>
+        <table>
+            <tr><th>Step</th><th>Algorithm</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Stage success prob</b></td>
+                <td>
+                    DP over techniques: <code>dp_total[k]</code> = sum of weight products for k techniques,
+                    <code>dp_fail[k]</code> = sum of weight×effectiveness products.<br/>
+                    <code>stage_success_p = 1 - (dp_fail[n] / dp_total[n])</code>
+                </td>
+                <td>Selects best n = min(available, ttps_per_stage) techniques. Higher mitigation → lower success probability.</td>
+            </tr>
+            <tr>
+                <td><b>Dependent chain</b></td>
+                <td><code>dependent_prob *= stage_success_p</code> for each stage in order</td>
+                <td>Sequential: attacker must succeed at each stage to reach the next.</td>
+            </tr>
+            <tr>
+                <td><b>Expected impact</b></td>
+                <td><code>Σ (dependent_prob × stage_impact)</code> per scenario, then × <code>annual_exposures × target_years × (scenario_weight / total_weight)</code></td>
+                <td>Impact values from scenario config. Scenario weights normalize across active scenarios.</td>
+            </tr>
+            <tr>
+                <td><b>CRI</b></td>
+                <td><code>CRI = (maximum_allowed_impact / total_expected_impact) × 1000</code></td>
+                <td>Infinite if expected impact is 0. Higher = more resilient.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── CONTRIBUTION ANALYSIS ── -->
+<div class="spec-card" style="border-color:#1F4E79">
+    <h3>Contribution Analysis — Perturbation Attribution</h3>
+    <div class="explanation">
+        <p>The <code>CriContribution</code> module answers "why did CRI change?" by performing <strong>counterfactual perturbation analysis</strong>. For each TTP that changed between periods, it computes: what would the CRI have been if <em>only that one TTP</em> changed? The difference from the baseline CRI is that TTP's contribution.</p>
+        <p>Changes are categorized as: <strong>new</strong> (TTP assessed for the first time), <strong>updated</strong> (re-assessed with different effectiveness), or <strong>other</strong> (weight decay or mitigation degradation). Each category gets its contribution computed separately, then all contributions are scaled so they sum to the actual overall CRI change.</p>
+        <div class="strength-box">
+            <div class="label">Strength — Worth Preserving</div>
+            Perturbation-based sensitivity analysis is a powerful technique. The idea of "remove one change, recompute, measure the delta" gives precise individual attribution. The new framework's sensitivity analysis (A16) uses a similar principle — set each control's effectiveness to 0%, re-run the engine, measure the ALE delta.
+        </div>
+        <div class="weakness-box">
+            <div class="label">Limitation</div>
+            The perturbation runs the full CRI calculation once per changed TTP. With hundreds of TTP changes per period, this is computationally expensive. The new framework faces the same challenge with its sensitivity analysis (re-run per control), but at least operates on 68 controls rather than potentially hundreds of individual TTP changes.
+        </div>
+        <div class="tradeoff-box">
+            <div class="label">Trade-off</div>
+            The contribution scaling step (normalizing so contributions sum to overall CRI change) is pragmatic but not mathematically rigorous — interactions between changes mean individual contributions don't truly decompose additively. The new framework doesn't attempt additive decomposition; its sensitivity report shows each control's independent impact.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Detail — Attribution Algorithm</summary>
+        <table>
+            <tr><th>Step</th><th>Method</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Categorize</b></td>
+                <td>New: missing in previous period. Updated: assessment date changed. Other: everything else.</td>
+                <td>Uses outer merge of consecutive snapshots.</td>
+            </tr>
+            <tr>
+                <td><b>Perturbation (new/updated)</b></td>
+                <td>For each TTP: copy baseline, apply single change, recompute CRI, record delta.</td>
+                <td>O(n) full CRI computations where n = number of changed TTPs.</td>
+            </tr>
+            <tr>
+                <td><b>Perturbation (other)</b></td>
+                <td>Apply all weight changes or all degradation changes together, recompute CRI, record single delta.</td>
+                <td>Batched by category rather than individual.</td>
+            </tr>
+            <tr>
+                <td><b>Normalization</b></td>
+                <td><code>scaled_contribution = contribution × (overall_CRI_change / sum_of_contributions)</code></td>
+                <td>Ensures contributions sum to actual CRI change. Handles sign mismatches.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- HEAD-TO-HEAD COMPARISON                                        -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Head-to-Head Comparison</h2>
+
+<div class="spec-card comparison-table" style="border-color:#1F4E79">
+    <h3>Legacy CRI vs. New Framework — Feature Comparison</h3>
+    <table>
+        <tr><th style="width:22%">Dimension</th><th style="width:39%">Legacy CRI System</th><th style="width:39%">New Framework</th></tr>
+        <tr>
+            <td><b>Evidence sources</b></td>
+            <td>TTP assessments only (analyst evaluations of technique coverage)</td>
+            <td>6 source types: pentests, red teams, incidents, operational findings, TTP assessments, vulnerability scans + asset inventory</td>
+        </tr>
+        <tr>
+            <td><b>Effectiveness model</b></td>
+            <td>Fixed mitigation levels (M1=0.9, M2=0.7, M3=0.5, M4=0.3) — point estimates, no uncertainty</td>
+            <td>Full Beta(α, β) distributions per (control, asset class). Updated by weighted evidence. Sampled in Monte Carlo.</td>
+        </tr>
+        <tr>
+            <td><b>Bayesian updating</b></td>
+            <td>Per (technique, tactic). Prior from tactic-level config. Strength tied to technique size. Observed mean_ values as pseudo-counts.</td>
+            <td>Per (control, asset class). Prior from control base effectiveness × global concentration. Weighted observations as pseudo-counts. Pure Bayesian — no multipliers.</td>
+        </tr>
+        <tr>
+            <td><b>Context differentiation</b></td>
+            <td>None. Same effectiveness everywhere. No asset class concept.</td>
+            <td>A4b Control × Asset Class Matrix. Coverage, effectiveness, and exposure differ per environment tier. Structural correlation replaces explicit correlation matrices.</td>
+        </tr>
+        <tr>
+            <td><b>Coverage modelling</b></td>
+            <td>Binary: assessed or not. Unobserved techniques get virtual TTPs with Bayesian estimates.</td>
+            <td>Continuous: per (control, asset class) deployment percentage. Multiplied into residual calculation. Validated by pentest scope.</td>
+        </tr>
+        <tr>
+            <td><b>Temporal decay</b></td>
+            <td>Linear degradation of improvements only. Annual rate. Can overshoot baseline. Weight reduction also linear.</td>
+            <td>Exponential age decay on all observation weights. Half-life ~365 days. Naturally bounded. No separate weight reduction — age decay handles it.</td>
+        </tr>
+        <tr>
+            <td><b>Deduplication</b></td>
+            <td>Implicit via groupby on Procedure description. No formal dedup rules.</td>
+            <td>Explicit dedup engine (A10). Rules: same (engagement/incident, control, asset_class) collapses to one observation. Fail-if-any.</td>
+        </tr>
+        <tr>
+            <td><b>Attack path model</b></td>
+            <td>Sequential stage chain: ∏ stage_success_p. DP for within-stage combination. ttps_per_stage limit.</td>
+            <td>5-stage model with AND/OR/SINGLE gates and correlation classes (Independent, Partially Correlated, Highly Correlated). Recursive descent parsing. More expressive.</td>
+        </tr>
+        <tr>
+            <td><b>Output type</b></td>
+            <td>CRI index (scalar). Per-scenario breakdown. No monetary values.</td>
+            <td>ALE distributions in euros (mean, P50, P75, P90, P95, P99). Loss exceedance curves. Portfolio VaR/CVaR.</td>
+        </tr>
+        <tr>
+            <td><b>Uncertainty</b></td>
+            <td>None. Single point estimate.</td>
+            <td>Full Monte Carlo simulation (10k–100k iterations). Samples effectiveness, TEF, and loss magnitude. Produces confidence intervals.</td>
+        </tr>
+        <tr>
+            <td><b>Sensitivity analysis</b></td>
+            <td>Perturbation-based CRI attribution per TTP change. Computationally expensive. Normalized to sum to overall change.</td>
+            <td>Per-control sensitivity: set effectiveness to 0%, re-run, measure ALE delta. Tornado charts. 68 controls vs. potentially hundreds of TTPs.</td>
+        </tr>
+        <tr>
+            <td><b>Controls granularity</b></td>
+            <td>Technique-level. ~hundreds of TTPs.</td>
+            <td>Control-level. 68 controls mapped to NIST CSF 2.0, MITRE ATT&CK, and regulatory requirements.</td>
+        </tr>
+        <tr>
+            <td><b>Regulatory alignment</b></td>
+            <td>None explicit.</td>
+            <td>NIST CSF 2.0 mapping, MITRE mapping (audited), regulatory mapping (ECB/SSM, DORA).</td>
+        </tr>
+    </table>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- WHAT CARRIES FORWARD                                           -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>What Carries Forward</h2>
+
+<div class="two-col">
+
+<div class="spec-card" style="border-color:#2D7D2D">
+    <h3>Concepts Preserved in the New Framework</h3>
+    <div class="explanation">
+        <p><strong>Bayesian Beta model for effectiveness.</strong> The core mathematical framework — using Beta distributions with prior beliefs updated by observations — originated in this system and is the foundation of the new framework. Refined but not replaced.</p>
+        <p><strong>Technique entropy as an informativeness signal.</strong> Using procedure count (technique size) to determine how much a single observation tells you. In the legacy system this controlled prior strength; in the new system it weights each TTP assessment as 1/procedure_count.</p>
+        <p><strong>Temporal decay of evidence.</strong> Old evidence should count less. The principle is preserved; the mechanism changes from linear to exponential.</p>
+        <p><strong>Perturbation-based sensitivity analysis.</strong> The "remove one, re-run, measure delta" approach for attribution. Applied to controls instead of individual TTPs in the new framework.</p>
+        <p><strong>Sequential attack stage model.</strong> Stages chained as dependent probabilities. The new framework adds gate logic and correlation classes but preserves the sequential chain structure.</p>
+        <p><strong>Scenario weighting.</strong> Not all scenarios are equally likely or impactful. Weighted aggregation across scenarios continues.</p>
+        <p><strong>Unobserved technique handling.</strong> The concept of estimating effectiveness for things you haven't tested. The legacy system uses virtual TTPs; the new framework handles this naturally through prior-only posteriors (zero observations → posterior = prior).</p>
+    </div>
+</div>
+
+<div class="spec-card" style="border-color:#A03030">
+    <h3>Limitations Addressed by the New Framework</h3>
+    <div class="explanation">
+        <p><strong>Single evidence source → multi-source intake.</strong> TTP assessments alone → pentests, red teams, incidents, operational findings, TTP assessments, vulnerability scans, asset inventory. The new Findings Register (A1) unifies all sources into one schema.</p>
+        <p><strong>Point estimates → full distributions.</strong> Fixed M1=0.9 → Beta(α, β) distributions sampled in Monte Carlo. Uncertainty is propagated, not hidden.</p>
+        <p><strong>No context differentiation → asset class resolution.</strong> Same effectiveness everywhere → per (control, asset class) posteriors, coverage, and exposure. A4b matrix solves coverage correlation structurally.</p>
+        <p><strong>Index score → monetary risk.</strong> CRI scalar → ALE distributions in euros with percentiles. Answers "how much could we lose" not just "how resilient are we."</p>
+        <p><strong>Linear degradation → exponential decay.</strong> Avoids overshoot, applies to all evidence (not just improvements), naturally bounded.</p>
+        <p><strong>Implicit dedup → formal dedup engine.</strong> Correlated findings from same engagement/incident are explicitly collapsed before weighting.</p>
+        <p><strong>Technique-level → control-level.</strong> Hundreds of TTPs → 68 controls with NIST/MITRE/regulatory mappings. More actionable for risk governance.</p>
+        <p><strong>No coverage modelling → continuous coverage per context.</strong> Binary assessed/not → per (control, asset class) deployment percentages with validation from pentests.</p>
+    </div>
+</div>
+
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+        primaryColor: '#1F4E79',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#1F4E79',
+        lineColor: '#888',
+        secondaryColor: '#D6E4F0',
+        tertiaryColor: '#FFF3CD',
+        fontSize: '12px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif'
+    },
+    flowchart: {
+        htmlLabels: true,
+        curve: 'basis',
+        nodeSpacing: 25,
+        rankSpacing: 55,
+        padding: 12,
+        useMaxWidth: false
+    }
+});
+</script>
+
+</body>
+</html>
