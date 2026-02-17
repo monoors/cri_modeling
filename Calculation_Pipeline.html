@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Risk Quantification — Calculation Pipeline & Asset Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: #f5f7fa;
+    color: #1a1a1a;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 { text-align: center; color: #1F4E79; font-size: 1.6em; margin-bottom: 4px; }
+  h2 { color: #1F4E79; font-size: 1.25em; margin: 32px 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #D6E4F0; }
+  .subtitle { text-align: center; color: #666; font-size: 0.95em; margin-bottom: 24px; }
+  .mermaid {
+    background: white; border-radius: 12px; padding: 30px 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow-x: auto; margin-bottom: 16px;
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    margin-bottom: 12px; padding: 12px; background: white; border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82em; }
+  .legend-swatch { width: 18px; height: 18px; border-radius: 4px; border: 2px solid; }
+
+  .spec-section { margin-top: 16px; }
+  .spec-card {
+    background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); border-left: 4px solid;
+  }
+  .spec-card h3 { font-size: 1.05em; margin-bottom: 10px; }
+  .spec-card .explanation { font-size: 0.9em; color: #333; margin-bottom: 14px; line-height: 1.65; }
+  .spec-card .explanation p { margin-bottom: 8px; }
+  .spec-card .explanation strong { color: #1F4E79; }
+
+  details {
+    margin-top: 8px; border-top: 1px solid #eee; padding-top: 10px;
+  }
+  details summary {
+    cursor: pointer; font-size: 0.85em; font-weight: 600; color: #666;
+    padding: 6px 0; user-select: none;
+  }
+  details summary:hover { color: #1F4E79; }
+  details[open] summary { color: #1F4E79; margin-bottom: 10px; }
+
+  .spec-card table { width: 100%; border-collapse: collapse; font-size: 0.82em; }
+  .spec-card th {
+    text-align: left; padding: 7px 8px; border-bottom: 2px solid #eee;
+    color: #555; font-weight: 700; background: #fafafa;
+  }
+  .spec-card td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; line-height: 1.45; }
+  .spec-card td code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 0.92em; }
+
+  .decision-box {
+    background: #F8F6FF; border: 1px solid #D6CCE8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .decision-box .label { font-weight: 700; color: #5B3F8F; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .tradeoff-box {
+    background: #FFF8F0; border: 1px solid #E8D4B8; border-radius: 6px;
+    padding: 12px 14px; margin: 10px 0; font-size: 0.88em; line-height: 1.55;
+  }
+  .tradeoff-box .label { font-weight: 700; color: #996600; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    font-size: 0.78em; font-weight: 600; white-space: nowrap;
+  }
+  .tag-algo { background: #FFE0CC; color: #CC6600; }
+  .tag-dist { background: #F0E8F4; color: #7B4FB5; }
+  .tag-bayes { background: #E8D8F4; color: #5B3F8F; }
+  .tag-data { background: #D6E4F0; color: #1F4E79; }
+  .tag-asset { background: #E0F0E0; color: #2D6D2D; }
+  .tag-build { background: #FFE8E8; color: #A03030; }
+  .tag-exists { background: #E0F0E0; color: #2D7D2D; }
+  .tag-new { background: #FFE0CC; color: #CC6600; }
+  .tag-extend { background: #FFF3CD; color: #856404; }
+  .tag-done { background: #D4EDDA; color: #155724; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Tab navigation */
+  .tab-nav {
+    display: flex; justify-content: center; gap: 0; margin-bottom: 28px;
+    background: white; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; margin-left: auto; margin-right: auto;
+  }
+  .tab-nav a {
+    flex: 1; text-align: center; padding: 14px 24px; text-decoration: none;
+    font-weight: 600; font-size: 0.9em; color: #666; transition: all 0.15s;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-nav a:hover { color: #1F4E79; background: #f0f4f8; }
+  .tab-nav a.active { color: #1F4E79; border-bottom-color: #1F4E79; background: #f0f4f8; }
+</style>
+</head>
+<body>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+    <a href="Calculation_Pipeline.html" class="active">New Framework</a>
+    <a href="Legacy_System_Review.html">Legacy CRI Review</a>
+</div>
+
+<h1>Cyber Risk Quantification Pipeline</h1>
+<p class="subtitle">Build Specification — Data Sources → Outputs + Asset Map</p>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MERMAID: PIPELINE                                              -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Pipeline Flow</h2>
+
+<div class="mermaid">
+flowchart LR
+
+    subgraph SRC["① Raw Data Sources"]
+        direction TB
+        PT["<b>Penetration Tests</b><br/>findings per control<br/>pass/fail, TTP tested"]
+        RT["<b>Red Team Exercises</b><br/>findings per control<br/>pass/fail, TTP tested"]
+        ID["<b>Incident Data</b><br/>control held or failed<br/>TTP observed"]
+        OPS["<b>Operational Findings</b><br/>audit gaps, config drift<br/>control failures"]
+        TTP["<b>TTP Assessments</b><br/>threat-intel-driven pass/fail<br/>per control per technique"]
+        VS["<b>Vulnerability Scanner</b><br/>CVEs, affected hosts<br/>CVSS, exploitability"]
+        ASSET["<b>Asset Inventory</b><br/>systems in scope<br/>control deployment status"]
+    end
+
+    A1[("<b>A1: Findings Register</b><br/>unified raw findings<br/>one row per finding<br/>tagged with asset_class")]
+
+    subgraph DEDUP["② Deduplicate & Normalize"]
+        direction TB
+        DD["<b>Deduplication</b><br/>collapse correlated findings<br/>→ unique observations"]
+        A3_ref["<b>A3: Technique Entropy</b><br/>procedure count<br/>per ATT&CK technique"]
+        A4_ref["<b>A4: App Size Table</b><br/>app_id → size factor"]
+        WT["<b>Weight Assignment</b><br/>age_decay × test_weight"]
+    end
+
+    A2[("<b>A2: Observation Log</b><br/>deduplicated + weighted<br/>one row per observation<br/>with weight, asset_class")]
+
+    subgraph COV_LAYER["②b Coverage & Exposure"]
+        direction TB
+        COV_RAW["<b>Coverage Calc</b><br/>per (control, asset class)<br/>protected ÷ in-scope"]
+        EXP_RAW["<b>Exposure Calc</b><br/>severity-weighted penalty"]
+    end
+
+    subgraph BAYES["③ Bayesian Update"]
+        direction TB
+        PRIOR["<b>Prior</b><br/>Beta(α₀, β₀)<br/>per (control, asset class)"]
+        UPDATE["<b>Beta Update</b><br/>held → α += w<br/>failed → β += w"]
+        POST["<b>Posterior</b><br/>Beta(α_post, β_post)<br/>per (control, asset class)"]
+    end
+
+    subgraph CTX["③b Context Resolution"]
+        direction TB
+        A4B["<b>A4b: Control × Asset Class Matrix</b><br/>coverage %, α_post, β_post,<br/>exposure_penalty<br/>per (control, asset class)"]
+    end
+
+    subgraph MOD["④ Model Inputs"]
+        direction TB
+        W1["<b>Effectiveness</b><br/>context-specific Beta"]
+        W2["<b>Coverage %</b><br/>context-specific"]
+        W3["<b>Exposure Penalty</b>"]
+        W4["<b>Gate Notation</b><br/>(A8)"]
+        W5["<b>TEF & Impact</b><br/>(A7 / A9)"]
+        W6["<b>Target Asset Class</b><br/>(A6b)"]
+    end
+
+    subgraph ENG["⑤ Calculation Engine"]
+        direction TB
+        S1["<b>1. Control Residual</b>"]
+        D_RES[("<b>Residual Table</b><br/>per control: R ∈ 0–1")]
+        S2["<b>2. Gate Resolution</b>"]
+        D_STAGE[("<b>Stage Residuals</b><br/>per (scenario, stage): R ∈ 0–1")]
+        S3["<b>3. Vulnerability</b>"]
+        D_VULN[("<b>Vulnerability Scores</b><br/>per scenario: V ∈ 0–1")]
+        S4["<b>4. LEF</b>"]
+        D_LEF[("<b>LEF Distribution</b><br/>per scenario: events/yr")]
+        S5["<b>5. Loss Magnitude</b>"]
+        D_LOSS[("<b>Loss Distribution</b><br/>per scenario: € PERT/lognormal")]
+        S6["<b>6. Scenario ALE</b>"]
+        D_ALE[("<b>ALE Distribution</b><br/>per scenario: € mean, P50–P99")]
+    end
+
+    subgraph OUT["⑥ Outputs"]
+        direction TB
+        O1["<b>A15: Risk Dashboard</b><br/>scenario + portfolio risk"]
+        O2["<b>A16: Sensitivity Report</b><br/>control impact + tornado"]
+        O3["<b>A17: Gap Report</b><br/>weakest stages + hotspots"]
+    end
+
+    PT -->|"findings"| A1
+    RT -->|"findings"| A1
+    ID -->|"findings"| A1
+    OPS -->|"findings"| A1
+    TTP -->|"findings"| A1
+    A1 --> DD
+    DD -->|"deduped obs<br/>(unweighted)"| WT
+    A3_ref --> WT
+    A4_ref --> WT
+    WT --> A2
+
+    VS --> EXP_RAW
+    ASSET --> COV_RAW
+    PT -->|"validates"| COV_RAW
+
+    A2 --> UPDATE
+    PRIOR --> UPDATE
+    UPDATE --> POST
+
+    POST --> A4B
+    COV_RAW --> A4B
+    EXP_RAW --> A4B
+
+    W6 -->|"selects row"| A4B
+    A4B --> W1
+    A4B --> W2
+    A4B --> W3
+    W1 --> S1
+    W2 --> S1
+    W3 --> S1
+    S1 --> D_RES
+    D_RES --> S2
+    W4 --> S2
+    S2 --> D_STAGE
+    D_STAGE --> S3
+    S3 --> D_VULN
+    D_VULN --> S4
+    W5 --> S4
+    W5 --> S5
+    S4 --> D_LEF
+    S5 --> D_LOSS
+    D_LEF --> S6
+    D_LOSS --> S6
+    S6 --> D_ALE
+    D_ALE --> O1
+    D_RES -->|"sensitivity"| O2
+    D_ALE -->|"sensitivity"| O2
+    D_STAGE -->|"weakest gates"| O3
+
+    classDef src fill:#E8F4E8,stroke:#2D7D2D,stroke-width:2px,color:#1a1a1a
+    classDef ded fill:#FDE8D0,stroke:#C67A2E,stroke-width:2px,color:#1a1a1a
+    classDef bay fill:#F0E8F4,stroke:#7B4FB5,stroke-width:2px,color:#1a1a1a
+    classDef ctx fill:#E8ECF4,stroke:#4A6FA5,stroke-width:2px,color:#1a1a1a
+    classDef mod fill:#FFF3CD,stroke:#D4A520,stroke-width:2px,color:#1a1a1a
+    classDef eng fill:#FFE0CC,stroke:#CC6600,stroke-width:2px,color:#1a1a1a
+    classDef out fill:#DCECF4,stroke:#1F4E79,stroke-width:3px,color:#1a1a1a
+    classDef dataProduct fill:#fff,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5,color:#333
+
+    class VS,PT,RT,ID,OPS,TTP,ASSET src
+    class DD,WT,A3_ref,A4_ref ded
+    class COV_RAW,EXP_RAW ded
+    class PRIOR,UPDATE,POST bay
+    class A4B ctx
+    class W1,W2,W3,W4,W5,W6 mod
+    class S1,S2,S3,S4,S5,S6 eng
+    class O1,O2,O3 out
+    class A1,A2,D_RES,D_STAGE,D_VULN,D_LEF,D_LOSS,D_ALE dataProduct
+
+    style SRC fill:#F0F8F0,stroke:#2D7D2D,stroke-width:2px
+    style DEDUP fill:#FFF4E8,stroke:#C67A2E,stroke-width:2px
+    style COV_LAYER fill:#FFF4E8,stroke:#C67A2E,stroke-width:2px
+    style BAYES fill:#F8F0FC,stroke:#7B4FB5,stroke-width:2px
+    style CTX fill:#EEF0F8,stroke:#4A6FA5,stroke-width:2px
+    style MOD fill:#FFFBEB,stroke:#D4A520,stroke-width:2px
+    style ENG fill:#FFF0E0,stroke:#CC6600,stroke-width:2px
+    style OUT fill:#E8F0F8,stroke:#1F4E79,stroke-width:2px
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#E8F4E8;border-color:#2D7D2D"></div> ① Sources</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FDE8D0;border-color:#C67A2E"></div> ② Dedup & Normalize</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#F0E8F4;border-color:#7B4FB5"></div> ③ Bayesian Update</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#EEF0F8;border-color:#4A6FA5"></div> ③b Context Resolution</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FFF3CD;border-color:#D4A520"></div> ④ Model Inputs</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FFE0CC;border-color:#CC6600"></div> ⑤ Engine</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#DCECF4;border-color:#1F4E79"></div> ⑥ Outputs</div>
+    <div class="legend-item" style="margin-left:16px"><div class="legend-swatch" style="background:#fff;border-color:#999;border-style:dashed"></div> Intermediate Data Product</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ASSET MAP                                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Asset Map — Build Status</h2>
+
+<div class="mermaid">
+flowchart LR
+
+    subgraph DATA["Data Assets"]
+        direction TB
+        A1[/"<b>A1: Findings Register</b><br/>all raw findings unified<br/>tagged with asset class"/]
+        A2[/"<b>A2: Observation Log</b><br/>deduplicated + weighted<br/>per (control, asset class)"/]
+        A3[/"<b>A3: Technique Entropy Table</b><br/>procedures-per-technique"/]
+        A4[/"<b>A4: Application Size Table</b><br/>app → size factor"/]
+        A4B[/"<b>A4b: Control × Asset Class</b><br/>DONE — 568 rows (305 active)<br/>coverage, posteriors, exposure<br/>per (control, asset class)"/]
+        AT[/"<b>Asset Taxonomy</b><br/>DONE — 20 asset classes<br/>AC-01 to AC-20"/]
+    end
+
+    subgraph CONFIG["Configuration Assets"]
+        direction TB
+        A5[/"<b>A5: Model Parameters</b><br/>concentration, decay rate<br/>MC iterations"/]
+        A6[/"<b>A6: Control Register</b><br/>DONE — 22 columns<br/>Bayesian priors + posteriors"/]
+        A7[/"<b>A7: Scenario Weights</b><br/>EXISTS"/]
+        A8[/"<b>A8: Attack Path Notation</b><br/>EXISTS"/]
+        A9[/"<b>A9: Scenario Override</b><br/>EXISTS"/]
+        A6B[/"<b>A6b: Asset-Control-Scenario</b><br/>DONE — 442 rows<br/>per-stage asset class targeting"/]
+    end
+
+    subgraph ENGINE["Engine Modules"]
+        direction TB
+        A10[/"<b>A10: Dedup Engine</b><br/>finding → observation"/]
+        A11[/"<b>A11: Weight Calculator</b><br/>age_decay × test_weight"/]
+        A12[/"<b>A12: Bayesian Updater</b><br/>per (control, asset class)<br/>prior + obs → posterior"/]
+        A13[/"<b>A13: Gate Resolver</b><br/>context-aware lookup<br/>parse APN → stage residual"/]
+        A14[/"<b>A14: Monte Carlo Engine</b><br/>LEF × loss → ALE dist"/]
+    end
+
+    subgraph OUTPUT["Output Assets"]
+        direction TB
+        A15[/"<b>A15: Risk Dashboard</b><br/>scenario + portfolio risk"/]
+        A16[/"<b>A16: Sensitivity Report</b><br/>control impact + tornado"/]
+        A17[/"<b>A17: Gap Report</b><br/>weakest stages + hotspots"/]
+    end
+
+    A1 --> A10
+    A10 --> A2
+    A3 --> A11
+    A4 --> A11
+    A2 --> A11
+    A11 --> A12
+    A5 --> A12
+    A6 --> A12
+    A12 --> A4B
+    A12 --> A6
+    AT --> A4B
+    AT --> A6B
+    A4B --> A13
+    A6B --> A13
+    A8 --> A13
+    A13 --> A14
+    A7 --> A14
+    A9 --> A14
+    A14 --> A15
+    A14 --> A16
+    A13 --> A17
+
+    classDef dataA fill:#E8EEF4,stroke:#4A7FB5,stroke-width:2px,color:#1a1a1a
+    classDef configA fill:#FFF3CD,stroke:#D4A520,stroke-width:2px,color:#1a1a1a
+    classDef engineA fill:#FFE0CC,stroke:#CC6600,stroke-width:2px,color:#1a1a1a
+    classDef outputA fill:#DCECF4,stroke:#1F4E79,stroke-width:2px,color:#1a1a1a
+
+    classDef doneA fill:#D4EDDA,stroke:#155724,stroke-width:2px,color:#1a1a1a
+
+    class A1,A2,A3,A4 dataA
+    class A4B,AT doneA
+    class A5,A7,A8,A9 configA
+    class A6,A6B doneA
+    class A10,A11,A12,A13,A14 engineA
+    class A15,A16,A17 outputA
+
+    style DATA fill:#F0F4F8,stroke:#4A7FB5,stroke-width:2px
+    style CONFIG fill:#FFFBEB,stroke:#D4A520,stroke-width:2px
+    style ENGINE fill:#FFF0E0,stroke:#CC6600,stroke-width:2px
+    style OUTPUT fill:#E8F0F8,stroke:#1F4E79,stroke-width:2px
+</div>
+
+<div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#E8EEF4;border-color:#4A7FB5"></div> Data Assets</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FFF3CD;border-color:#D4A520"></div> Configuration Assets</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#FFE0CC;border-color:#CC6600"></div> Engine Modules</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#DCECF4;border-color:#1F4E79"></div> Output Assets</div>
+    <div class="legend-item" style="margin-left:24px"><div class="legend-swatch" style="background:#D4EDDA;border-color:#155724"></div> Done (built)</div>
+    <div class="legend-item"><span class="tag tag-exists">EXISTS</span> Already in workbook</div>
+    <div class="legend-item"><span class="tag tag-extend">EXTEND</span> Existing + new columns</div>
+    <div class="legend-item"><span class="tag tag-new">NEW</span> Must build from scratch</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DETAILED SPECS — PIPELINE STEPS                                -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Detailed Pipeline Specifications</h2>
+
+<!-- ── STEP 1: RAW DATA SOURCES ── -->
+<div class="spec-card" style="border-color:#2D7D2D">
+    <h3>① Raw Data Sources — Intake</h3>
+    <div class="explanation">
+        <p>Everything starts with findings — observations about whether a control worked or didn't. These come from pentests, red team exercises, real incidents, operational audits, and threat-intel-driven TTP assessments. Two additional sources — vulnerability scanners and the asset inventory — feed coverage and exposure calculations but don't enter the Bayesian effectiveness pipeline.</p>
+        <p>All findings land in a single <strong>Findings Register (A1)</strong> with a common schema. Every finding must say: which control was tested, what happened (pass or fail), when, and in what context. Critically, each finding is also tagged with an <strong>asset class</strong> — because the same control can behave very differently on cloud infrastructure vs. legacy on-prem vs. third-party connections.</p>
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            We use a unified schema for all source types rather than separate intake tables per source. This keeps the dedup engine (A10) and weight calculator (A11) generic — they don't need to know where a finding came from, only what happened and how to weight it.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Specification — Schema & Encoding Rules</summary>
+        <table>
+            <tr><th>Source</th><th>Required Fields per Finding</th><th>Outcome Encoding</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Penetration Tests</b></td>
+                <td><code>control_id</code>, <code>ttp_id</code>, <code>outcome</code>, <code>date</code>, <code>engagement_id</code>, <code>app_id</code>, <code>asset_class</code></td>
+                <td><code>pass</code> = control blocked the attack path<br/><code>fail</code> = control was bypassed</td>
+                <td>Also provides coverage validation: if pentest scope included systems outside control deployment, flag coverage gap.</td>
+            </tr>
+            <tr>
+                <td><b>Red Team Exercises</b></td>
+                <td><code>control_id</code>, <code>ttp_id</code>, <code>outcome</code>, <code>date</code>, <code>engagement_id</code>, <code>asset_class</code></td>
+                <td>Same as pentest</td>
+                <td>Typically fewer findings but higher fidelity (realistic conditions). May span multiple controls per engagement.</td>
+            </tr>
+            <tr>
+                <td><b>Incident Data</b></td>
+                <td><code>control_id</code>, <code>ttp_id</code>, <code>outcome</code>, <code>date</code>, <code>incident_id</code>, <code>asset_class</code></td>
+                <td><code>pass</code> = control held during the incident<br/><code>fail</code> = control failed to prevent/detect</td>
+                <td>Each control involved in the incident gets its own finding row. A single incident may produce multiple findings across different controls.</td>
+            </tr>
+            <tr>
+                <td><b>Operational Findings</b></td>
+                <td><code>control_id</code>, <code>outcome</code>, <code>date</code>, <code>finding_id</code>, <code>source_detail</code>, <code>asset_class</code></td>
+                <td><code>fail</code> = gap/drift/failure found<br/><code>pass</code> = audit confirmed control operating correctly</td>
+                <td>Includes: audit findings, configuration drift alerts, SOC operational review findings. <code>ttp_id</code> optional (may not map to a specific technique).</td>
+            </tr>
+            <tr>
+                <td><b>TTP Assessments</b></td>
+                <td><code>control_id</code>, <code>ttp_id</code>, <code>outcome</code>, <code>date</code>, <code>assessment_id</code>, <code>asset_class</code></td>
+                <td><code>pass</code> = control designed to counter this TTP<br/><code>fail</code> = design gap identified</td>
+                <td>Threat-intel-driven assessment: real-world TTPs from threat intelligence are evaluated against the environment's controls. Lower weight per observation due to technique entropy (see ②) — each assessment covers only a fraction of a technique's known procedures.</td>
+            </tr>
+            <tr>
+                <td><b>Vulnerability Scanner</b></td>
+                <td colspan="3"><em>Does NOT feed the Bayesian pipeline.</em> Feeds Exposure Penalty via a separate severity-weighted penalty function. Fields: <code>control_id</code>, <code>cve_id</code>, <code>cvss_score</code>, <code>exploit_available</code>, <code>host_count</code>, <code>reachable</code>, <code>asset_class</code>.</td>
+            </tr>
+            <tr>
+                <td><b>Asset Inventory</b></td>
+                <td colspan="3"><em>Does NOT feed the Bayesian pipeline.</em> Feeds Coverage % in A4b. Fields: <code>control_id</code>, <code>asset_class</code>, <code>assets_in_scope</code>, <code>assets_protected</code>.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── STEP 2: DEDUP & NORMALIZE ── -->
+<div class="spec-card" style="border-color:#C67A2E">
+    <h3>② Deduplicate & Normalize — Processing</h3>
+    <div class="explanation">
+        <p>Raw findings are noisy. A single pentest engagement might produce five findings that all trace back to the same root cause on the same control. If we counted each one separately, we'd overweight that single real-world weakness. The dedup layer collapses correlated findings into <strong>unique observations</strong> — one observation per real-world event per control per asset class. Deduplication always happens <em>before</em> weighting and before the Bayesian update — it's a data preprocessing step, not a model parameter.</p>
+        <p>After deduplication, each observation gets a <strong>weight</strong>. The weight has two components multiplied together: <strong>age decay</strong> (how recent is this finding?) and <strong>test weight</strong> (how informative was the test?). The final weight becomes a <strong>pseudo-count</strong> in the Beta update — it's literally how many "virtual observations" this finding is worth. A pass observation with weight 1.5 adds 1.5 to α. A fail with weight 0.3 adds 0.3 to β. This is what connects the weighting system directly to the Bayesian model.</p>
+
+        <p><strong>Why each source type gets its weight:</strong></p>
+        <p><strong>Pentests, red teams, incidents, and operational findings</strong> — these are real-world, operational observations. For controls scoped to specific applications (application-team controls), a finding on a larger, more complex application tells you more than one on a small internal tool — there's more attack surface, more integration points, more ways the control could have failed. So the test weight scales with application size. For infrastructure-level controls (firewalls, segmentation, network controls) that aren't scoped to a single app, there's no app-size axis to scale on, so they get a flat weight of 1.0.</p>
+        <p><strong>TTP assessments</strong> are threat-intel-driven evaluations: real-world TTPs observed in threat intelligence are assessed against the environment's controls — "can our controls counter technique T1059.001 as it was used in campaign X?" These are less informative per assessment than operational tests like pentests or incidents — an assessment evaluates whether a control should work against a technique, but doesn't prove it under real attack conditions. The weight is inversely proportional to <strong>technique entropy</strong>: the number of known unique procedures for that ATT&CK technique. A technique like T1059 (Command and Scripting Interpreter) has dozens of known procedures — any single assessment can only confirm coverage of a small fraction. So each assessment gets low weight. A narrow technique with only 3 known procedures means one assessment covers a meaningful proportion — higher weight. This naturally captures the idea that TTP assessments are individually lightweight but collectively informative when you have many of them across different techniques.</p>
+
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            The weight is the <strong>single responsiveness dial</strong> in the entire model. The prior concentration (c) is fixed and global. We deliberately avoid having two dials — one for "how much do we trust the prior" and another for "how much do we trust findings" — because that creates double-dampening. If you want the model to be more responsive to a particular type of evidence, make the evidence more informative (increase its weight), don't weaken the prior. This keeps the model honest and the tuning surface simple.
+        </div>
+        <div class="tradeoff-box">
+            <div class="label">Trade-off</div>
+            We use a single exponential decay function rather than discrete aging buckets (e.g., "current / aging / expired"). This is smoother and avoids cliff effects where a finding suddenly drops from full weight to zero on an arbitrary anniversary. The half-life parameter (suggested: ~365 days) is the single tuning knob for temporal relevance.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Specification — Dedup Rules & Weight Formulas</summary>
+        <table>
+            <tr><th>Process</th><th>Rule</th><th>Input</th><th>Output</th></tr>
+            <tr>
+                <td><b>Dedup: same engagement</b></td>
+                <td>Findings sharing <code>engagement_id</code> + <code>control_id</code> + <code>asset_class</code> + same root cause → collapse into 1 observation. Outcome = <code>fail</code> if any finding was <code>fail</code>.</td>
+                <td>N findings from A1</td>
+                <td>1 observation per (engagement, control, asset_class, root_cause)</td>
+            </tr>
+            <tr>
+                <td><b>Dedup: same incident</b></td>
+                <td>Findings sharing <code>incident_id</code> + <code>control_id</code> + <code>asset_class</code> → collapse into 1 observation. Same fail-if-any rule.</td>
+                <td>N findings from A1</td>
+                <td>1 observation per (incident, control, asset_class)</td>
+            </tr>
+            <tr>
+                <td><b>No dedup needed</b></td>
+                <td>TTP assessments and standalone operational findings: each is already 1 unique observation.</td>
+                <td>1 finding</td>
+                <td>1 observation (passthrough)</td>
+            </tr>
+        </table>
+
+        <h4 style="margin: 16px 0 8px 0; font-size: 0.92em; color: #C67A2E;">Weight Formula</h4>
+        <p style="font-size: 0.85em; line-height: 1.5; margin-bottom: 10px;"><code>weight = age_decay × test_weight</code> — this single scalar becomes the pseudo-count added to α (pass) or β (fail) in the Beta update.</p>
+
+        <table>
+            <tr><th>Component</th><th>Formula</th><th>Parameters</th><th>Example Values</th></tr>
+            <tr>
+                <td><b>Age decay</b></td>
+                <td><code>age_decay = e^(−λ × days_since_finding)</code></td>
+                <td>
+                    λ = decay rate (model parameter in A5).<br/>
+                    Suggested: λ = ln(2) / 365 ≈ 0.0019 (half-life of 365 days).
+                </td>
+                <td>
+                    Today's finding: <code>e^0 = 1.0</code><br/>
+                    6 months old: <code>e^(−0.0019 × 182) ≈ 0.71</code><br/>
+                    1 year old: <code>e^(−0.0019 × 365) ≈ 0.50</code><br/>
+                    2 years old: <code>e^(−0.0019 × 730) ≈ 0.25</code><br/>
+                    3 years old: <code>≈ 0.12</code> (near-zero influence)
+                </td>
+            </tr>
+            <tr>
+                <td><b>Test weight: app-team controls</b></td>
+                <td><code>test_weight = app_size_factor</code> (from A4)</td>
+                <td>
+                    Applies to controls scoped to a specific application team.<br/>
+                    Determined by <code>app_id</code> on the finding → lookup in A4.
+                </td>
+                <td>
+                    Small internal tool: <code>0.5</code><br/>
+                    Medium application: <code>1.0</code><br/>
+                    Large customer-facing app: <code>1.5</code><br/>
+                    Critical core banking platform: <code>2.0</code>
+                </td>
+            </tr>
+            <tr>
+                <td><b>Test weight: infra controls</b></td>
+                <td><code>test_weight = 1.0</code> (flat)</td>
+                <td>
+                    Applies to infrastructure controls (firewalls, segmentation, network-level) not scoped to a single application.<br/>
+                    Control type flag from A6.
+                </td>
+                <td>Always <code>1.0</code></td>
+            </tr>
+            <tr>
+                <td><b>Test weight: TTP assessments</b></td>
+                <td><code>test_weight = 1 / procedure_count(technique)</code></td>
+                <td>
+                    <code>procedure_count</code> = number of unique known procedures for that ATT&CK technique (from A3, sourced from MITRE STIX data).<br/>
+                    Reflects what fraction of the technique's attack surface this one assessment covers.
+                </td>
+                <td>
+                    T1059 (50 procedures): <code>1/50 = 0.02</code><br/>
+                    T1548 (10 procedures): <code>1/10 = 0.10</code><br/>
+                    T1542 (3 procedures): <code>1/3 = 0.33</code><br/>
+                    <em>Individually tiny, but 20 TTP assessments across different techniques accumulate meaningful signal.</em>
+                </td>
+            </tr>
+        </table>
+
+        <h4 style="margin: 16px 0 8px 0; font-size: 0.92em; color: #C67A2E;">Worked Examples</h4>
+        <table>
+            <tr><th>Scenario</th><th>age_decay</th><th>test_weight</th><th>final weight</th><th>Beta effect</th></tr>
+            <tr>
+                <td>Fresh pentest fail on critical app (cloud MFA)</td>
+                <td>1.0 (today)</td>
+                <td>2.0 (critical app)</td>
+                <td><b>2.0</b></td>
+                <td>β<sub>cloud-MFA</sub> += 2.0 — strong downward signal</td>
+            </tr>
+            <tr>
+                <td>6-month-old incident pass on infra control (legacy firewall)</td>
+                <td>0.71</td>
+                <td>1.0 (infra)</td>
+                <td><b>0.71</b></td>
+                <td>α<sub>legacy-firewall</sub> += 0.71 — moderate upward signal</td>
+            </tr>
+            <tr>
+                <td>Fresh TTP assessment pass on broad technique (T1059, 50 procedures)</td>
+                <td>1.0 (today)</td>
+                <td>0.02 (1/50)</td>
+                <td><b>0.02</b></td>
+                <td>α += 0.02 — barely moves the needle alone</td>
+            </tr>
+            <tr>
+                <td>2-year-old pentest pass on small app</td>
+                <td>0.25</td>
+                <td>0.5 (small app)</td>
+                <td><b>0.125</b></td>
+                <td>α += 0.125 — old + small = weak signal</td>
+            </tr>
+        </table>
+
+        <h4 style="margin: 16px 0 8px 0; font-size: 0.92em; color: #C67A2E;">Interaction with Prior Concentration</h4>
+        <p style="font-size: 0.85em; line-height: 1.55;">
+            With prior concentration c = 5 and base effectiveness 80%, the prior is Beta(4, 1). Total pseudo-counts = 5. A single fresh pentest fail on a critical app (weight = 2.0) updates to Beta(4, 3) → posterior mean drops from 80% to 57%. That's the intended responsiveness — a high-quality finding moves the estimate meaningfully. Meanwhile, 10 TTP assessment passes on broad techniques (total weight ≈ 0.3) barely move it: Beta(4.3, 1) → 81%. Design assessments alone don't override operational evidence.
+        </p>
+    </details>
+</div>
+
+<!-- ── STEP 3: BAYESIAN UPDATE ── -->
+<div class="spec-card" style="border-color:#7B4FB5">
+    <h3>③ Bayesian Effectiveness Update</h3>
+    <div class="explanation">
+        <p>Each control starts with a <strong>prior belief</strong> about how effective it is — the base effectiveness score, expressed as a Beta distribution. This is the starting assumption before any test data is considered. The concentration parameter controls how strongly we hold that belief: a low concentration (e.g., c = 5) means we're open to being convinced by data; a higher value means we trust the prior more.</p>
+        <p>Then we feed in the weighted observations from step ②. Every "pass" observation nudges the effectiveness up. Every "fail" nudges it down. The size of the nudge is the observation's weight — fresh findings from large-scale pentests move the needle more than stale TTP design reviews.</p>
+        <p>The key change: <strong>updates happen per (control × asset class)</strong>, not per control globally. A pentest finding on legacy MFA only updates the legacy-MFA posterior. A cloud MFA pass only updates cloud-MFA. This means each context develops its own effectiveness estimate based on evidence from that context — pure Bayesian, no blending hacks, no effectiveness multipliers.</p>
+        <p>The output is a full Beta distribution per (control, asset class) cell — not just a point estimate. The Monte Carlo engine samples from this distribution to propagate uncertainty through the rest of the calculation.</p>
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            The prior concentration is a single global parameter, not per-control. The finding weights are the only dial that controls responsiveness. This avoids double-dampening (one knob for how much you trust the prior, another for how much you trust findings) and keeps the model honest — if you want a control to be more responsive to data, make the data more informative, don't weaken the prior.
+        </div>
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            No effectiveness multipliers. If a control's implementation genuinely differs across asset classes (hardware token MFA vs. SMS MFA), that difference will show up in the test results — pentests on SMS-based MFA will fail more often, and the Bayesian posterior for that asset class will naturally be lower. The data speaks for itself.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Specification — Prior Setup, Update Loop & Edge Cases</summary>
+        <table>
+            <tr><th>Component</th><th>Specification</th><th>Implementation Detail</th></tr>
+            <tr>
+                <td><b>Prior setup</b></td>
+                <td>
+                    <span class="tag tag-bayes">Beta(α₀, β₀)</span><br/>
+                    Given: base_effectiveness (0–1) and concentration <code>c</code> (from A5)<br/>
+                    <code>α₀ = base_effectiveness × c</code><br/>
+                    <code>β₀ = (1 − base_effectiveness) × c</code>
+                </td>
+                <td>
+                    Concentration <code>c</code> is a single global parameter (e.g., c = 5).<br/>
+                    Prior of 80% with c=5 → Beta(4, 1) → mean=0.80, responsive to data.<br/>
+                    Prior of 80% with c=10 → Beta(8, 2) → mean=0.80, more resistant.<br/>
+                    Prior is set per (control, asset class) cell in A4b. All cells for the same control start with the same base_effectiveness from A6.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Update loop</b></td>
+                <td>
+                    For each observation in A2 matching <code>(control_id, asset_class)</code>:<br/>
+                    &nbsp;&nbsp;if <code>outcome = pass</code>: <code>α += weight</code><br/>
+                    &nbsp;&nbsp;if <code>outcome = fail</code>: <code>β += weight</code>
+                </td>
+                <td>
+                    Process all observations for a (control, asset class) pair in one pass (order doesn't matter — Beta update is commutative).<br/>
+                    Stateless: always recalculates from prior + all observations.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Posterior output</b></td>
+                <td>
+                    <span class="tag tag-bayes">Beta(α_post, β_post)</span> per (control, asset class)<br/>
+                    Point estimate: <code>α_post / (α_post + β_post)</code><br/>
+                    Full distribution available for MC sampling.
+                </td>
+                <td>
+                    Write <code>α_post</code>, <code>β_post</code> to A4b per cell.<br/>
+                    Write global posterior (asset-weighted blend) to A6 for reporting.
+                </td>
+            </tr>
+            <tr>
+                <td><b>Edge: zero observations</b></td>
+                <td>Posterior = prior. Base effectiveness stands as-is.</td>
+                <td>Natural Beta behavior with zero data.</td>
+            </tr>
+            <tr>
+                <td><b>Edge: all fail</b></td>
+                <td>β grows, α stays at α₀. Posterior mean drops toward 0. Correct behavior.</td>
+                <td>Prior prevents reaching exactly 0.</td>
+            </tr>
+            <tr>
+                <td><b>Edge: no asset class tag</b></td>
+                <td>If a finding has no <code>asset_class</code>, assign to a default "unclassified" class. Flag for manual review.</td>
+                <td>Prevents data loss while encouraging proper tagging.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── STEP 3b: CONTEXT RESOLUTION (A4b) ── -->
+<div class="spec-card" style="border-color:#4A6FA5">
+    <h3>③b Context Resolution — The Control × Asset Class Table <span class="tag tag-done">DONE</span></h3>
+    <div class="explanation">
+        <p>This is the central piece that solves two problems at once. The same control — say "MFA on privileged access" — can have 95% coverage on cloud, 40% on legacy, and 100% on a handful of third-party links. Its effectiveness may also genuinely differ because the implementations differ and the test results will reflect that.</p>
+        <p><strong>A4b is a flat table with 568 rows</strong> — one row per valid (control, asset class) pair. Each row holds the coverage percentage, the full Bayesian posterior, and the exposure penalty for that specific combination. The table uses a <strong>20-class asset taxonomy</strong> (AC-01 through AC-20) derived from a Type × Vendor/OS × Platform classification: endpoints, servers, network gear, security appliances, applications, payment infrastructure, and specialized systems (SWIFT, ATM, OT). Of the 568 valid pairs, <strong>305 are active</strong> in at least one scenario-stage combination and <strong>263 are inactive</strong> (the control applies to the asset class but no current scenario exercises it — making coverage gaps visible).</p>
+        <p>When the engine evaluates a scenario, the <strong>Asset-Control-Scenario sheet</strong> (A6b — 442 validated rows) tells it exactly which controls apply to which asset classes at each attack stage. This replaces the old "look up a single target_asset_class per scenario" approach with <strong>per-stage asset class targeting</strong> — because an attacker may start at network infrastructure (AC-12/AC-13), pivot through servers (AC-04/AC-05), and land on payment systems (AC-18/AC-19), touching different asset classes at different stages.</p>
+        <p>This also solves the <strong>coverage correlation problem</strong>. When a scenario stage targets legacy assets, every control's legacy rows get pulled at once. If legacy is systematically under-deployed and under-tested, all those coverages will be low and all those posteriors will be weak — simultaneously, without any explicit correlation parameter. The correlation is structural: it emerges from the data, not from a model assumption. This replaces what would otherwise require a 68×68 control-to-control coverage correlation matrix that would be nearly impossible to calibrate.</p>
+        <div class="tradeoff-box">
+            <div class="label">Trade-off</div>
+            We chose 20 asset classes over the originally considered 3–5, because coarser tiers (e.g., "legacy" vs. "cloud") would have lost meaningful differentiation — a Windows Server and a Linux Server have different control profiles, as do SWIFT terminals vs. ATM infrastructure. 20 classes give fine-grained resolution while remaining manageable. The taxonomy is structured as Type × Vendor/OS × Platform, so it can be collapsed to fewer tiers for reporting.
+        </div>
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            A4b is a flat table (one row per pair), not a matrix (asset classes as rows × controls as columns). With 20 asset classes × 68 controls, a matrix layout would be unwieldy. The flat structure is easier to filter, sort, and query — and makes active vs. inactive pairs immediately visible through row formatting.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Specification — Matrix Structure & Resolution Logic</summary>
+        <table>
+            <tr><th>Aspect</th><th>Specification</th><th>Notes</th></tr>
+            <tr>
+                <td><b>Table dimensions</b></td>
+                <td>568 rows × 13 columns. One row per valid (control, asset class) pair. 20 asset classes (AC-01 to AC-20), 68 controls.</td>
+                <td>305 rows active in scenarios (cream fill), 263 inactive (gray fill). Invalid pairs (control doesn't apply to AC) are excluded entirely.</td>
+            </tr>
+            <tr>
+                <td><b>Columns (as built)</b></td>
+                <td><code>Control ID</code>, <code>Control Name</code>, <code>Control Type</code>, <code>Asset Class ID</code>, <code>Asset Class Name</code>, <code>Coverage</code>, <code>α_post</code>, <code>β_post</code>, <code>Posterior Mean (%)</code>, <code>Exposure Penalty</code>, <code>Obs Count</code>, <code># Scenario-Stages</code>, <code>Active in Scenarios</code></td>
+                <td>Coverage and Exposure Penalty are placeholder columns — require CMDB and vuln scanner data. Posteriors initialized from A6 priors (Preventive=65%, Detective=55%, Corrective=50%).</td>
+            </tr>
+            <tr>
+                <td><b>Initialization (done)</b></td>
+                <td>Every row initialized with α_post = α₀ and β_post = β₀ from A6's priors (concentration c=5). Coverage defaults to empty until populated from Asset Inventory. Exposure Penalty defaults to empty.</td>
+                <td>Active/inactive determined by cross-referencing the 442-row Asset-Control-Scenario sheet. <code># Scenario-Stages</code> counts how many scenario-stage combinations exercise each pair.</td>
+            </tr>
+            <tr>
+                <td><b>Resolution at query time</b></td>
+                <td>Gate resolver (A13) reads the Asset-Control-Scenario sheet (A6b) which specifies per (scenario, stage) exactly which asset classes are targeted and which controls apply. Pulls <code>(coverage, α_post, β_post, exposure_penalty)</code> from matching A4b rows.</td>
+                <td>This is per-stage resolution, not per-scenario — an attacker touching AC-12 at S1 and AC-18 at S4 gets different control contexts at each stage.</td>
+            </tr>
+            <tr>
+                <td><b>Coverage correlation</b></td>
+                <td>No explicit correlation parameter. When the engine queries rows for a specific asset class, all controls' values for that class are returned. Systematic weakness is captured by the data itself.</td>
+                <td>Replaces a 68×68 control-to-control coverage correlation matrix.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+
+<!-- ── STEP 2b: COVERAGE & EXPOSURE ── -->
+<div class="spec-card" style="border-color:#C67A2E">
+    <h3>②b Coverage & Exposure — Separate Paths</h3>
+    <div class="explanation">
+        <p>Coverage and exposure are not about how well a control works — they're about <strong>where it's deployed</strong> and <strong>how exposed the environment is</strong>. A control can be highly effective but only cover 40% of the assets it should protect. That 60% gap is a coverage problem, not an effectiveness problem.</p>
+        <p>Coverage is straightforward: for each (control, asset class) pair, what fraction of in-scope assets actually have the control deployed? This goes directly into A4b. Pentest results can validate coverage — if a pentest reaches systems that should have been protected by a control but weren't, that's a coverage flag.</p>
+        <p>Exposure penalty captures vulnerability-driven risk — unpatched CVEs, reachable services, known exploits in the wild. It multiplies down the effective protection of a control. Even if MFA is 90% effective and 100% deployed, a critical RCE vulnerability on the same system reduces the real-world protection. The penalty is also computed per (control, asset class) and stored in A4b.</p>
+    </div>
+    <details>
+        <summary>Technical Specification — Calculation Rules</summary>
+        <table>
+            <tr><th>Input</th><th>Calculation</th><th>Output</th><th>Stored In</th></tr>
+            <tr>
+                <td><b>Coverage %</b></td>
+                <td><code>coverage = assets_protected / assets_in_scope</code> per (control, asset_class).<br/>Validated by pentest scope: if pentest reached systems outside control deployment, flag for review.</td>
+                <td>0–100% per (control, asset_class)</td>
+                <td>A4b: coverage column per cell</td>
+            </tr>
+            <tr>
+                <td><b>Exposure Penalty</b></td>
+                <td>
+                    Severity-weighted penalty based on vulnerability inventory, scoped to asset class:<br/>
+                    <code>raw_exposure = Σ (cvss_weight × exploit_factor × reachability) / max_threshold</code><br/>
+                    <code>penalty = max(0.5, 1.0 − raw_exposure)</code><br/>
+                    Clamped to [0.5, 1.0]. 1.0 = no vulns. 0.5 = max penalty.
+                </td>
+                <td>0.5–1.0 per (control, asset_class)</td>
+                <td>A4b: exposure_penalty column per cell</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+
+<!-- ── STEP 4: MODEL INPUTS ── -->
+<div class="spec-card" style="border-color:#D4A520">
+    <h3>④ Model Inputs — Workbook Integration</h3>
+    <div class="explanation">
+        <p>This is the handoff layer — where the preprocessing pipeline (steps ①–③) meets the calculation engine (step ⑤). The model inputs are the values the engine actually reads. They come from a mix of the A4b matrix (context-specific effectiveness, coverage, exposure) and the existing workbook sheets (gate notation, scenario weights, overrides).</p>
+        <p>The gate resolver looks at which scenario it's evaluating, checks that scenario's <strong>target asset class</strong> (from A6b), and pulls the matching row from A4b. The engine never sees a single "MFA effectiveness" number — it sees "MFA effectiveness on legacy" or "MFA effectiveness on cloud," depending on what the scenario demands.</p>
+    </div>
+    <details>
+        <summary>Technical Specification — Input Sources & Locations</summary>
+        <table>
+            <tr><th>Input</th><th>Source</th><th>Location</th><th>Format</th></tr>
+            <tr>
+                <td><b>Effectiveness</b></td>
+                <td>Posterior from ③, resolved by asset class</td>
+                <td>A4b: α_post, β_post per (control, asset_class)</td>
+                <td>Distribution: Beta(α, β) params. Point estimate available.</td>
+            </tr>
+            <tr>
+                <td><b>Coverage %</b></td>
+                <td>Asset Inventory via ②b, resolved by asset class</td>
+                <td>A4b: coverage per (control, asset_class)</td>
+                <td>0–100%</td>
+            </tr>
+            <tr>
+                <td><b>Exposure Penalty</b></td>
+                <td>Vuln Scanner via ②b, resolved by asset class</td>
+                <td>A4b: exposure_penalty per (control, asset_class)</td>
+                <td>0.5–1.0</td>
+            </tr>
+            <tr>
+                <td><b>Gate Notation</b></td>
+                <td>Pre-defined (existing)</td>
+                <td>Attack Path Notation sheet, cols C + D</td>
+                <td>AND/OR/SINGLE tree + correlation class</td>
+            </tr>
+            <tr>
+                <td><b>TEF & Impact</b></td>
+                <td>Scenario Weights (baseline) or Scenario Override (if active + not expired)</td>
+                <td>Scenario Weights cols D–I; Override cols F–K</td>
+                <td>Band + Score + Loss range (low/best/high in €)</td>
+            </tr>
+            <tr>
+                <td><b>Target Asset Class</b></td>
+                <td>Scenario tag (new)</td>
+                <td>A6b: Scenario Asset Class Tag</td>
+                <td>One of the defined asset classes, or "all" for blended</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── INTERMEDIATE DATA PRODUCTS ── -->
+<div class="spec-card" style="border-color:#999; border-left-style: dashed;">
+    <h3>Intermediate Data Products — What Flows Between Steps</h3>
+    <div class="explanation">
+        <p>Each processing step produces a concrete data product that becomes the input for the next step. These aren't just logical arrows — they're tables, distributions, or vectors that need to exist somewhere (in memory during a run, or persisted for audit). If you're building this, you need to know what each intermediate looks like.</p>
+        <p>The pipeline has two types of intermediates: <strong>persisted assets</strong> (A1, A2, A4b — stored between runs, auditable) and <strong>runtime intermediates</strong> (residual tables, stage residuals, vulnerability scores, LEF/loss distributions — computed fresh each engine run, discarded or logged after).</p>
+    </div>
+    <details>
+        <summary>Technical Specification — Intermediate Schemas</summary>
+        <table>
+            <tr><th>Data Product</th><th>Produced By</th><th>Consumed By</th><th>Schema</th><th>Persistence</th></tr>
+            <tr>
+                <td><b>A1: Findings Register</b></td>
+                <td>① Raw Data Sources (intake)</td>
+                <td>② Dedup Engine (A10)</td>
+                <td>One row per raw finding: <code>finding_id</code>, <code>control_id</code>, <code>ttp_id</code>, <code>outcome</code> (pass/fail), <code>date</code>, <code>source_type</code>, <code>engagement_id</code>, <code>incident_id</code>, <code>app_id</code>, <code>asset_class</code>, <code>source_detail</code></td>
+                <td><span class="tag tag-new">Persisted</span> — append-only, auditable</td>
+            </tr>
+            <tr>
+                <td><b>Deduplicated observations (unweighted)</b></td>
+                <td>② Dedup Engine (A10)</td>
+                <td>② Weight Calculator (A11)</td>
+                <td>One row per unique observation: <code>observation_id</code>, <code>control_id</code>, <code>ttp_id</code>, <code>outcome</code>, <code>date</code>, <code>source_type</code>, <code>asset_class</code>, <code>dedup_key</code>. No weight yet.</td>
+                <td>Transient — intermediate within the ② pipeline</td>
+            </tr>
+            <tr>
+                <td><b>A2: Observation Log (weighted)</b></td>
+                <td>② Weight Calculator (A11)</td>
+                <td>③ Bayesian Updater (A12)</td>
+                <td>Same as above + <code>weight</code> (scalar), <code>age_decay</code>, <code>test_weight</code>. One row per unique observation.</td>
+                <td><span class="tag tag-new">Persisted</span> — stored for audit, recomputed on new findings</td>
+            </tr>
+            <tr>
+                <td><b>A4b: Control × Asset Class Table</b> <span class="tag tag-done">DONE</span></td>
+                <td>③ Bayesian Updater (A12) + ②b Coverage/Exposure</td>
+                <td>④ Model Inputs → ⑤ Gate Resolver (A13)</td>
+                <td>568 rows. Per (control_id, asset_class_id): <code>coverage</code>, <code>α_post</code>, <code>β_post</code>, <code>posterior_mean</code>, <code>exposure_penalty</code>, <code>obs_count</code>, <code># scenario-stages</code>, <code>active_flag</code></td>
+                <td><span class="tag tag-done">Persisted</span> — central context-resolution asset (built)</td>
+            </tr>
+            <tr>
+                <td><b>Residual Table</b></td>
+                <td>⑤ Step 1 (Control Residual)</td>
+                <td>⑤ Step 2 (Gate Resolution) + ⑥ Sensitivity Report</td>
+                <td>Per control (context-resolved): <code>control_id</code>, <code>effectiveness</code> (sampled or point), <code>coverage</code>, <code>exposure_penalty</code>, <code>residual</code> (0–1). Vector of 68 values per MC iteration.</td>
+                <td>Runtime — recomputed each MC iteration</td>
+            </tr>
+            <tr>
+                <td><b>Stage Residuals</b></td>
+                <td>⑤ Step 2 (Gate Resolution)</td>
+                <td>⑤ Step 3 (Vulnerability) + ⑥ Gap Report</td>
+                <td>Per (sub_scenario_id, stage): <code>stage_residual</code> (0–1). Up to 47 × 5 = 235 values per MC iteration (though most scenarios use fewer stages).</td>
+                <td>Runtime — recomputed each MC iteration</td>
+            </tr>
+            <tr>
+                <td><b>Vulnerability Scores</b></td>
+                <td>⑤ Step 3 (Scenario Vulnerability)</td>
+                <td>⑤ Step 4 (LEF)</td>
+                <td>Per sub_scenario_id: <code>vulnerability</code> (0–1). Product of active stage residuals. Vector of 47 values per MC iteration.</td>
+                <td>Runtime — recomputed each MC iteration</td>
+            </tr>
+            <tr>
+                <td><b>LEF Distribution</b></td>
+                <td>⑤ Step 4 (Loss Event Frequency)</td>
+                <td>⑤ Step 6 (Scenario ALE)</td>
+                <td>Per sub_scenario_id: <code>LEF</code> (events/year). Scalar per iteration (TEF × vulnerability). Over N iterations → distribution.</td>
+                <td>Runtime — accumulated across MC iterations</td>
+            </tr>
+            <tr>
+                <td><b>Loss Magnitude Distribution</b></td>
+                <td>⑤ Step 5 (Loss Magnitude)</td>
+                <td>⑤ Step 6 (Scenario ALE)</td>
+                <td>Per sub_scenario_id: <code>loss_sample</code> (€). Drawn from PERT/lognormal fitted to (low, best, high). Scalar per iteration.</td>
+                <td>Runtime — accumulated across MC iterations</td>
+            </tr>
+            <tr>
+                <td><b>ALE Distribution</b></td>
+                <td>⑤ Step 6 (Scenario ALE)</td>
+                <td>⑥ Outputs (A15, A16)</td>
+                <td>Per sub_scenario_id: array of N ALE samples (LEF × loss per iteration). Summarised as mean, P50, P75, P90, P95, P99.</td>
+                <td><span class="tag tag-new">Persisted</span> — stored in A15 as final output</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── STEP 5: CALCULATION ENGINE ── -->
+<div class="spec-card" style="border-color:#CC6600">
+    <h3>⑤ Calculation Engine — Six Steps</h3>
+    <div class="explanation">
+        <p>The engine takes the model inputs and turns them into risk numbers. It runs in six steps, from individual control residuals all the way to annualized loss expectancy (ALE) distributions per scenario.</p>
+        <p><strong>Steps 1–3</strong> are about defensive posture: how much residual risk does each control leave, how do controls combine at gates, and what's the overall vulnerability of each attack path? <strong>Steps 4–6</strong> are about translating that vulnerability into money: how often does the attack succeed (frequency), how much does it cost when it does (magnitude), and what's the expected annual loss?</p>
+        <p>The whole thing runs inside a <strong>Monte Carlo loop</strong>. Each iteration samples from the Beta effectiveness distributions (uncertainty about how good controls really are), from TEF distributions (uncertainty about threat frequency), and from loss distributions (uncertainty about impact). After thousands of iterations, you get a full probability distribution of outcomes — not just a single number, but confidence intervals, percentiles, and tail risk.</p>
+        <div class="decision-box">
+            <div class="label">Design Decision</div>
+            Coverage and exposure penalty are treated as point estimates (deterministic), not sampled. Only effectiveness is stochastic per iteration. Coverage is a factual deployment question (you either deployed it or you didn't), while effectiveness has genuine epistemic uncertainty. Exposure penalty is kept deterministic for simplicity — vulnerability scan data is refreshed frequently enough to treat it as current-state.
+        </div>
+    </div>
+    <details>
+        <summary>Technical Specification — Algorithms, I/O Schemas & Notes</summary>
+        <table>
+            <tr><th>Step</th><th>Algorithm</th><th>Input Schema</th><th>Output Schema</th><th>Notes</th></tr>
+            <tr>
+                <td><b>1. Control Residual</b></td>
+                <td><span class="tag tag-algo">multiplicative</span><br/><code>R = 1 − (eff × cov × penalty)</code></td>
+                <td>Per control (context-resolved from A4b): <code>effectiveness</code> (sample from Beta or point), <code>coverage</code>, <code>penalty</code></td>
+                <td>Per control: <code>residual</code> (0–1)</td>
+                <td>MC mode: sample <code>eff</code> from Beta(α_post, β_post) each iteration. Coverage and penalty are deterministic.</td>
+            </tr>
+            <tr>
+                <td><b>2. Gate Resolution</b></td>
+                <td>
+                    <span class="tag tag-algo">recursive eval</span><br/>
+                    Parse gate notation into tree. Evaluate leaf-to-root:<br/>
+                    AND (Independent): <code>R = ∏ R_i</code><br/>
+                    AND (Partially Correlated): <code>R = (Σ R_i) / n</code><br/>
+                    AND (Highly Correlated): <code>R = max(R_i)</code><br/>
+                    OR: <code>R = min(R_i)</code><br/>
+                    SINGLE: <code>R = R_i</code>
+                </td>
+                <td>Per (scenario, stage): gate notation + correlation class + control residuals from Step 1</td>
+                <td>Per (scenario, stage): <code>stage_residual</code> (0–1)</td>
+                <td>Gate resolver (A13) parses nested notation like <code>AND[OR[CTL-a, CTL-b], CTL-c]</code>. Recursive descent parser.</td>
+            </tr>
+            <tr>
+                <td><b>3. Scenario Vulnerability</b></td>
+                <td><span class="tag tag-algo">chain product</span><br/><code>V = ∏ stage_residual_k</code> for active stages</td>
+                <td>Per scenario: list of stage residuals (only active stages)</td>
+                <td>Per scenario: <code>vulnerability</code> (0–1)</td>
+                <td>Read <code># Stages</code> from Scenarios sheet to know which stages are active per sub-scenario.</td>
+            </tr>
+            <tr>
+                <td><b>4. Loss Event Frequency</b></td>
+                <td><span class="tag tag-algo">frequency scaling</span><br/><code>LEF = TEF × V</code></td>
+                <td>Per scenario: <code>TEF_score</code> + <code>vulnerability</code></td>
+                <td>Per scenario: <code>LEF</code> (events/year)</td>
+                <td>MC mode: TEF can also be sampled from a distribution fitted to TEF low/best/high range.</td>
+            </tr>
+            <tr>
+                <td><b>5. Loss Magnitude</b></td>
+                <td>
+                    <span class="tag tag-dist">distribution fit</span><br/>
+                    Fit PERT or lognormal to 3-point loss estimate (low, best, high).
+                </td>
+                <td>Per scenario: <code>loss_low</code>, <code>loss_best</code>, <code>loss_high</code> (€)</td>
+                <td>Per scenario: loss distribution (parameterized)</td>
+                <td>PERT recommended (bounded, uses mode). Lognormal alternative for fat tails.</td>
+            </tr>
+            <tr>
+                <td><b>6. Scenario ALE</b></td>
+                <td>
+                    <span class="tag tag-dist">Monte Carlo</span><br/>
+                    Per iteration: sample LEF, sample loss, multiply.<br/>
+                    N = 10,000–100,000 iterations.
+                </td>
+                <td>Per scenario: LEF distribution + loss distribution</td>
+                <td>Per scenario: ALE distribution → mean, P50, P75, P90, P95, P99</td>
+                <td>All uncertainty propagates here: Beta effectiveness (Step 1), TEF (Step 4), loss (Step 5) combine through sampling.</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+<!-- ── STEP 6: OUTPUTS ── -->
+<div class="spec-card" style="border-color:#1F4E79">
+    <h3>⑥ Output Generation — Deliverables</h3>
+    <div class="explanation">
+        <p>The engine produces four types of output, each answering a different question. <strong>Scenario risk</strong> tells you where the biggest losses are likely to come from. <strong>Portfolio risk</strong> tells you the total exposure and how bad a bad year could get. <strong>Control impact</strong> tells you which controls matter most — which ones you'd most regret losing. <strong>Gap analysis</strong> tells you where the defense architecture is weakest, including which asset classes have the most correlated gaps.</p>
+        <p>The sensitivity analysis (control impact) is the most computationally expensive output — it re-runs the engine once per control with that control "removed." But it's also the most operationally useful: it directly answers "where should we invest next?" and "what should we never let lapse?"</p>
+    </div>
+    <details>
+        <summary>Technical Specification — Output Algorithms & Content</summary>
+        <table>
+            <tr><th>Output</th><th>Algorithm</th><th>Content</th><th>Asset</th></tr>
+            <tr>
+                <td><b>Scenario-Level Risk</b></td>
+                <td><span class="tag tag-dist">percentile extraction</span> from ALE distribution per scenario</td>
+                <td>Per sub-scenario: ALE mean, P50, P75, P90, P95, P99. LEF mean. Vulnerability score. Ranked by P95 ALE descending.</td>
+                <td>A15: Risk Dashboard</td>
+            </tr>
+            <tr>
+                <td><b>Portfolio Risk</b></td>
+                <td><span class="tag tag-dist">aggregation</span> — sum scenario ALEs with inter-scenario correlation adjustment</td>
+                <td>Aggregate ALE distribution. Loss exceedance curve. VaR at P95 and P99. Expected shortfall (CVaR).</td>
+                <td>A15: Risk Dashboard</td>
+            </tr>
+            <tr>
+                <td><b>Control Impact</b></td>
+                <td><span class="tag tag-algo">sensitivity analysis</span> — per control, set effectiveness to 0%, re-run, measure ALE delta</td>
+                <td>Per control: risk reduction €. Sensitivity rank. Tornado chart data (top 20 by impact).</td>
+                <td>A16: Sensitivity Report</td>
+            </tr>
+            <tr>
+                <td><b>Gap Analysis</b></td>
+                <td><span class="tag tag-algo">ranked filter</span> — weakest defense points</td>
+                <td>Stages with highest residuals. Weakest gates. Correlation hotspots (asset classes where multiple controls are weak). Controls with posterior &lt; 50%. Broken out by asset class.</td>
+                <td>A17: Gap Report</td>
+            </tr>
+        </table>
+    </details>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- ASSET INVENTORY                                                -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Asset Inventory — Build / Buy / Extend</h2>
+
+<div class="two-col">
+
+<div class="spec-card" style="border-color:#4A7FB5">
+    <h3>Data Assets</h3>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Status</th><th>Description</th></tr>
+        <tr><td>A1</td><td>Findings Register</td><td><span class="tag tag-new">NEW</span></td><td>Unified intake table for all raw findings. Schema: control_id, ttp_id, outcome, date, source_type, engagement_id, app_id, <b>asset_class</b>. One row per raw finding.</td></tr>
+        <tr><td>A2</td><td>Observation Log</td><td><span class="tag tag-new">NEW</span></td><td>Deduplicated and weighted observations. Schema: control_id, ttp_id, outcome, date, source_type, weight, dedup_key, <b>asset_class</b>. One row per unique real-world observation.</td></tr>
+        <tr><td>A3</td><td>Technique Entropy Table</td><td><span class="tag tag-new">NEW</span></td><td>ATT&CK technique IDs → procedure count. Used for TTP assessment weights. Source: MITRE ATT&CK STIX data.</td></tr>
+        <tr><td>A4</td><td>Application Size Table</td><td><span class="tag tag-new">NEW</span></td><td>Application IDs → size factors (0.5–2.0). Maintained by application teams or CMDB.</td></tr>
+        <tr><td>A4b</td><td>Control × Asset Class Table</td><td><span class="tag tag-done">DONE</span></td><td>568 rows (305 active, 263 inactive). Per row: Control ID/Name/Type, Asset Class ID/Name, Coverage, α_post, β_post, Posterior Mean, Exposure Penalty, Obs Count, # Scenario-Stages, Active flag. Flat table, not matrix.</td></tr>
+        <tr><td>—</td><td>Asset Taxonomy</td><td><span class="tag tag-done">DONE</span></td><td>20 asset classes (AC-01 to AC-20). Structured as Type × Vendor/OS × Platform. Covers endpoints, servers, network, security appliances, applications, payment infra, SWIFT, ATM, OT.</td></tr>
+    </table>
+</div>
+
+<div class="spec-card" style="border-color:#D4A520">
+    <h3>Configuration Assets</h3>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Status</th><th>Description</th></tr>
+        <tr><td>A5</td><td>Model Parameters</td><td><span class="tag tag-new">NEW</span></td><td>Global model parameters: prior concentration (c), decay rate (λ), MC iteration count (N). Single config sheet or JSON.</td></tr>
+        <tr><td>A6</td><td>Control Register</td><td><span class="tag tag-done">DONE</span></td><td>68 controls, 22 columns. Extended with: α₀, β₀, Prior Mean (%), Concentration (c=5), Obs Count, α_post, β_post, Posterior Mean (%), # Asset Classes, Path Usage, # Scenario-Stages. Priors by type: Preventive=65%, Detective=55%, Corrective=50%.</td></tr>
+        <tr><td>A6b</td><td>Asset-Control-Scenario</td><td><span class="tag tag-done">DONE</span></td><td>442 validated rows. Per (scenario, stage, asset class): which controls apply. Per-stage asset class targeting — replaces the original "single target_asset_class per sub-scenario" concept with full stage-level resolution.</td></tr>
+        <tr><td>A7</td><td>Scenario Weights</td><td><span class="tag tag-exists">EXISTS</span></td><td>Pre-calibrated TEF and impact bands. No changes needed.</td></tr>
+        <tr><td>A8</td><td>Attack Path Notation</td><td><span class="tag tag-exists">EXISTS</span></td><td>Gate logic + correlation notes. No changes needed.</td></tr>
+        <tr><td>A9</td><td>Scenario Override</td><td><span class="tag tag-exists">EXISTS</span></td><td>Temporary likelihood/impact overrides. No changes needed.</td></tr>
+    </table>
+</div>
+
+<div class="spec-card" style="border-color:#CC6600">
+    <h3>Engine Modules</h3>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Status</th><th>Description</th></tr>
+        <tr><td>A10</td><td>Dedup Engine</td><td><span class="tag tag-new">NEW</span></td><td>Reads A1. Groups by (engagement_id/incident_id + control_id + asset_class). Collapses to unique observations. Writes to A2.</td></tr>
+        <tr><td>A11</td><td>Weight Calculator</td><td><span class="tag tag-new">NEW</span></td><td>Reads A2 + A3 (entropy) + A4 (app size) + A5 (decay rate). Computes age_decay × test_weight. Updates weight column in A2.</td></tr>
+        <tr><td>A12</td><td>Bayesian Updater</td><td><span class="tag tag-new">NEW</span></td><td>Reads A2 (weighted obs) + A6 (base effectiveness) + A5 (concentration). Updates per (control, asset_class). Writes posteriors to A4b and global blend to A6.</td></tr>
+        <tr><td>A13</td><td>Gate Resolver</td><td><span class="tag tag-new">NEW</span></td><td>Reads A8 (gate notation) + A4b (context-resolved residuals) + A6b (scenario → asset class). Parses gates, applies correlation rules, outputs stage residuals.</td></tr>
+        <tr><td>A14</td><td>Monte Carlo Engine</td><td><span class="tag tag-new">NEW</span></td><td>Orchestrates full MC simulation. Samples from Beta distributions (A4b), PERT/lognormal (loss). Runs Steps 1–6 per iteration. Produces ALE distributions + percentiles.</td></tr>
+    </table>
+</div>
+
+<div class="spec-card" style="border-color:#1F4E79">
+    <h3>Output Assets</h3>
+    <table>
+        <tr><th>ID</th><th>Name</th><th>Status</th><th>Description</th></tr>
+        <tr><td>A15</td><td>Risk Dashboard</td><td><span class="tag tag-new">NEW</span></td><td>Scenario-level risk table (47 rows) + portfolio aggregate. ALE mean/P50/P95/P99, LEF, vulnerability score. Loss exceedance curve data.</td></tr>
+        <tr><td>A16</td><td>Sensitivity Report</td><td><span class="tag tag-new">NEW</span></td><td>Per-control risk impact. ALE_with, ALE_without, delta_€, sensitivity_rank. Tornado chart data for top 20.</td></tr>
+        <tr><td>A17</td><td>Gap Report</td><td><span class="tag tag-new">NEW</span></td><td>Weakest stages, highest-residual gates, correlation hotspots by asset class, controls with posterior &lt; 50%. Remediation priority ranking.</td></tr>
+    </table>
+</div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- BUILD SUMMARY                                                  -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+
+<h2>Build Summary</h2>
+
+<div class="spec-card" style="border-color:#A03030">
+    <h3>Asset Count</h3>
+    <table>
+        <tr><th>Category</th><th>Exists</th><th>Done</th><th>New</th><th>Total</th></tr>
+        <tr><td>Data Assets</td><td>0</td><td>2</td><td>4</td><td>6</td></tr>
+        <tr><td>Configuration Assets</td><td>3</td><td>2</td><td>1</td><td>6</td></tr>
+        <tr><td>Engine Modules</td><td>0</td><td>0</td><td>5</td><td>5</td></tr>
+        <tr><td>Output Assets</td><td>0</td><td>0</td><td>3</td><td>3</td></tr>
+        <tr style="font-weight:700; background:#f8f8f8"><td>Total</td><td>3</td><td>4</td><td>13</td><td>20</td></tr>
+    </table>
+    <p style="font-size: 0.85em; color: #666; margin-top: 10px;">Done assets: A4b (Control × Asset Class Table), Asset Taxonomy, A6 (Control Register — extended with Bayesian columns), A6b (Asset-Control-Scenario — 442 validated rows). The EXTEND category has been retired — A6 is now fully DONE.</p>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<script>
+mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+        primaryColor: '#1F4E79',
+        primaryTextColor: '#fff',
+        primaryBorderColor: '#1F4E79',
+        lineColor: '#888',
+        secondaryColor: '#D6E4F0',
+        tertiaryColor: '#FFF3CD',
+        fontSize: '12px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif'
+    },
+    flowchart: {
+        htmlLabels: true,
+        curve: 'basis',
+        nodeSpacing: 25,
+        rankSpacing: 55,
+        padding: 12,
+        useMaxWidth: false
+    }
+});
+</script>
+
+</body>
+</html>
